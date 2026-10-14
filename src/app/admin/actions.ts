@@ -7,6 +7,17 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/server/db";
 import { createSession, destroySession, requireAdmin } from "@/lib/server/session";
 import { generateEan13, isValidEan13, slugify, SIZES } from "@/lib/barcode";
+import {
+  DEFAULT_SETTINGS,
+  ORDER_STATUS_LABEL,
+  ORDER_TRANSITIONS,
+  SETTINGS_KEYS,
+  formatOrderNumber,
+  sanitizeLike,
+  type OrderStatusValue,
+  type SettingsKey,
+  type SizeChart,
+} from "@/lib/settings";
 
 export type ActionResult<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -73,7 +84,20 @@ export type CategoryInput = {
   description?: string;
   image?: string;
   sortOrder?: number;
+  sizeChart?: SizeChart | null;
 };
+
+function cleanSizeChart(chart: SizeChart | null | undefined): string | null {
+  if (!chart) return null;
+  const columns = (chart.columns ?? []).map((c) => String(c).trim().slice(0, 40)).filter(Boolean).slice(0, 8);
+  if (!columns.length) return null;
+  const rows = (chart.rows ?? [])
+    .slice(0, 20)
+    .map((r) => columns.map((_, i) => String(r?.[i] ?? "").trim().slice(0, 40)))
+    .filter((r) => r.some(Boolean));
+  if (!rows.length) return null;
+  return JSON.stringify({ columns, rows, note: String(chart.note ?? "").trim().slice(0, 300) });
+}
 
 export async function saveCategory(input: CategoryInput): Promise<ActionResult> {
   await requireAdmin();
@@ -88,6 +112,7 @@ export async function saveCategory(input: CategoryInput): Promise<ActionResult> 
     description: input.description?.trim() || null,
     image: input.image?.trim() || null,
     sortOrder: Number.isFinite(input.sortOrder) ? Number(input.sortOrder) : 0,
+    ...(input.sizeChart !== undefined ? { sizeChart: cleanSizeChart(input.sizeChart) } : {}),
   };
 
   try {
@@ -400,4 +425,213 @@ export async function lookupBarcode(code: string) {
     where: { OR: [{ barcode: q }, { sku: q.toUpperCase() }] },
     include: { product: { select: { id: true, name: true, images: { take: 1, orderBy: { position: "asc" } } } } },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+
+export async function updateOrderStatus(orderId: string, next: OrderStatusValue, note?: string): Promise<ActionResult> {
+  await requireAdmin();
+  try {
+    await db.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true } });
+      if (!order) throw new Error("Order not found.");
+      const current = order.status as OrderStatusValue;
+      if (!ORDER_TRANSITIONS[current]?.includes(next)) {
+        throw new Error(`Can't move an order from ${ORDER_STATUS_LABEL[current]} to ${ORDER_STATUS_LABEL[next] ?? next}.`);
+      }
+      if (next === "ready_for_dispatch" && order.items.some((i) => i.scannedQty < i.quantity)) {
+        throw new Error("Scan every item on the dispatch screen before marking it packed.");
+      }
+
+      const data: Record<string, unknown> = { status: next };
+      if (next === "dispatched") data.dispatchedAt = new Date();
+      if (next === "delivered") {
+        data.deliveredAt = new Date();
+        if (order.paymentMethod === "cod" && order.paymentStatus === "pending") data.paymentStatus = "paid";
+      }
+      if (next === "returned" && order.paymentStatus === "paid") data.paymentStatus = "refunded";
+      await tx.order.update({ where: { id: orderId }, data });
+
+      // Put stock back when an order is cancelled or returned.
+      if (next === "cancelled" || next === "returned") {
+        for (const item of order.items) {
+          if (!item.variantId) continue;
+          const v = await tx.variant.update({ where: { id: item.variantId }, data: { stock: { increment: item.quantity } } });
+          await tx.stockMovement.create({
+            data: {
+              variantId: item.variantId,
+              change: item.quantity,
+              balance: v.stock,
+              type: "return",
+              note: `Order ${formatOrderNumber(order.number)} ${next}`,
+            },
+          });
+        }
+      }
+
+      await tx.orderEvent.create({
+        data: {
+          orderId,
+          type: "status",
+          message: `${ORDER_STATUS_LABEL[current]} → ${ORDER_STATUS_LABEL[next]}${note?.trim() ? ` — ${note.trim().slice(0, 300)}` : ""}`,
+        },
+      });
+      if (data.paymentStatus === "paid") {
+        await tx.orderEvent.create({ data: { orderId, type: "payment", message: "Cash collected on delivery — marked paid" } });
+      }
+      if (next === "cancelled" || next === "returned") {
+        await tx.orderEvent.create({ data: { orderId, type: "status", message: "Items returned to stock" } });
+      }
+    });
+  } catch (e) {
+    return fail(e instanceof Error ? e.message : "Could not update order.");
+  }
+  revalidateAll();
+  return { ok: true };
+}
+
+export async function setPaymentStatus(orderId: string, status: "pending" | "paid" | "refunded"): Promise<ActionResult> {
+  await requireAdmin();
+  if (!["pending", "paid", "refunded"].includes(status)) return fail("Invalid payment status.");
+  const order = await db.order.findUnique({ where: { id: orderId } });
+  if (!order) return fail("Order not found.");
+  if (order.paymentStatus === status) return { ok: true };
+  await db.$transaction([
+    db.order.update({ where: { id: orderId }, data: { paymentStatus: status } }),
+    db.orderEvent.create({ data: { orderId, type: "payment", message: `Payment ${order.paymentStatus} → ${status}` } }),
+  ]);
+  revalidateAll();
+  return { ok: true };
+}
+
+export async function addOrderNote(orderId: string, message: string): Promise<ActionResult> {
+  await requireAdmin();
+  const text = message?.trim().slice(0, 500);
+  if (!text) return fail("Write a note first.");
+  await db.orderEvent.create({ data: { orderId, type: "note", message: text } });
+  revalidateAll();
+  return { ok: true };
+}
+
+export type ScanResult = {
+  ok: boolean;
+  kind: "correct" | "complete" | "already_done" | "wrong_item" | "unknown" | "error";
+  message: string;
+  itemId?: string;
+};
+
+/** Dispatch verification: count a scanned barcode against the order's items. */
+export async function scanOrderItem(orderId: string, code: string): Promise<ScanResult> {
+  await requireAdmin();
+  const barcode = code.trim();
+  if (!barcode) return { ok: false, kind: "error", message: "Empty scan." };
+
+  const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true } });
+  if (!order) return { ok: false, kind: "error", message: "Order not found." };
+  if (!["confirmed", "processing"].includes(order.status)) {
+    return { ok: false, kind: "error", message: `Order is ${ORDER_STATUS_LABEL[order.status as OrderStatusValue]} — scanning is closed.` };
+  }
+
+  const item = order.items.find((i) => i.barcode === barcode || i.sku === barcode.toUpperCase());
+  if (!item) {
+    const other = await db.variant.findFirst({ where: { OR: [{ barcode }, { sku: barcode.toUpperCase() }] }, include: { product: true } });
+    return other
+      ? { ok: false, kind: "wrong_item", message: `Wrong item: ${other.product.name} (${other.colorName} / ${other.size}) is not in this order.` }
+      : { ok: false, kind: "unknown", message: `Unknown barcode ${barcode}.` };
+  }
+  if (item.scannedQty >= item.quantity) {
+    return { ok: false, kind: "already_done", message: `Already packed all ${item.quantity} × ${item.productName} (${item.size}).`, itemId: item.id };
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.orderItem.update({ where: { id: item.id }, data: { scannedQty: { increment: 1 } } });
+    if (order.status === "confirmed") {
+      await tx.order.update({ where: { id: orderId }, data: { status: "processing" } });
+      await tx.orderEvent.create({ data: { orderId, type: "status", message: "Confirmed → Processing (packing started)" } });
+    }
+  });
+
+  const remaining = order.items.reduce((a, i) => a + (i.quantity - i.scannedQty), 0) - 1;
+  revalidateAll();
+  return remaining === 0
+    ? { ok: true, kind: "complete", message: "All items scanned — ready to mark packed.", itemId: item.id }
+    : { ok: true, kind: "correct", message: `${item.productName} (${item.colorName} / ${item.size}) ✓ — ${remaining} left`, itemId: item.id };
+}
+
+export async function resetOrderScans(orderId: string): Promise<ActionResult> {
+  await requireAdmin();
+  await db.orderItem.updateMany({ where: { orderId }, data: { scannedQty: 0 } });
+  await db.orderEvent.create({ data: { orderId, type: "note", message: "Dispatch scans reset" } });
+  revalidateAll();
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Store settings & content pages
+// ---------------------------------------------------------------------------
+
+export async function saveSettingsSection(key: SettingsKey, value: unknown): Promise<ActionResult> {
+  await requireAdmin();
+  if (!SETTINGS_KEYS.includes(key)) return fail("Unknown settings section.");
+  const clean = sanitizeLike(DEFAULT_SETTINGS[key], value);
+  await db.setting.upsert({
+    where: { key },
+    update: { value: JSON.stringify(clean) },
+    create: { key, value: JSON.stringify(clean) },
+  });
+  revalidateAll();
+  return { ok: true };
+}
+
+export async function resetSettingsSection(key: SettingsKey): Promise<ActionResult> {
+  await requireAdmin();
+  if (!SETTINGS_KEYS.includes(key)) return fail("Unknown settings section.");
+  await db.setting.deleteMany({ where: { key } });
+  revalidateAll();
+  return { ok: true };
+}
+
+export type PageInput = {
+  id?: string;
+  title: string;
+  slug: string;
+  body: string;
+  published: boolean;
+  showInFooter: boolean;
+  sortOrder: number;
+};
+
+export async function savePage(input: PageInput): Promise<ActionResult<{ id: string }>> {
+  await requireAdmin();
+  const title = input.title?.trim().slice(0, 120);
+  if (!title) return fail("Page title is required.");
+  const slug = slugify(input.slug || title);
+  if (!slug) return fail("Slug must contain letters or numbers.");
+  const data = {
+    title,
+    slug,
+    body: String(input.body ?? "").slice(0, 50_000),
+    published: !!input.published,
+    showInFooter: !!input.showInFooter,
+    sortOrder: Number.isFinite(input.sortOrder) ? Math.round(input.sortOrder) : 0,
+  };
+  try {
+    const page = input.id
+      ? await db.page.update({ where: { id: input.id }, data })
+      : await db.page.create({ data });
+    revalidateAll();
+    return { ok: true, data: { id: page.id } };
+  } catch (e) {
+    return fail(uniqueError(e) ?? "Could not save page.");
+  }
+}
+
+export async function deletePage(id: string): Promise<ActionResult> {
+  await requireAdmin();
+  await db.page.delete({ where: { id } });
+  revalidateAll();
+  return { ok: true };
 }

@@ -1,265 +1,124 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import { orders, formatPrice } from "@/lib/data";
-import { OrderStatusBadge, PaymentStatusBadge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { ArrowLeft, Printer, Truck, Package } from "lucide-react";
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ArrowLeft, ScanLine } from "lucide-react";
+import { db } from "@/lib/server/db";
+import { requireAdmin } from "@/lib/server/session";
+import { formatPrice } from "@/lib/format";
+import { ORDER_STATUS_LABEL, ORDER_TRANSITIONS, formatOrderNumber, type OrderStatusValue } from "@/lib/settings";
+import { SmartImage } from "@/components/ui/SmartImage";
+import { Button } from "@/components/ui/Button";
+import { OrderActions } from "@/components/admin/OrderActions";
+import { OrderStatusPill, PageHeader, Panel, PaymentPill } from "@/components/admin/ui";
 
-export default function OrderDetailPage() {
-  const params = useParams();
-  const order = orders.find((o) => o.id === params.id);
-
-  if (!order) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <p className="text-body-md text-asur-silver">Order not found</p>
-      </div>
-    );
-  }
+export default async function OrderDetailPage({ params }: PageProps<"/admin/orders/[id]">) {
+  await requireAdmin();
+  const { id } = await params;
+  const order = await db.order.findUnique({
+    where: { id },
+    include: {
+      items: true,
+      customer: { include: { _count: { select: { orders: true } } } },
+      events: { orderBy: { createdAt: "desc" } },
+    },
+  });
+  if (!order) notFound();
+  const status = order.status as OrderStatusValue;
+  const scanned = order.items.reduce((a, i) => a + i.scannedQty, 0);
+  const units = order.items.reduce((a, i) => a + i.quantity, 0);
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <Link
-          href="/admin/orders"
-          className="p-2 text-asur-silver hover:text-asur-white transition-colors"
-        >
-          <ArrowLeft size={18} />
-        </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-display-sm font-bold text-asur-white">
-              Order #{order.orderNumber}
-            </h1>
-            <OrderStatusBadge status={order.status} />
-            <PaymentStatusBadge status={order.paymentStatus} />
-          </div>
-          <p className="text-body-sm text-asur-silver mt-1">
-            Placed on{" "}
-            {new Date(order.createdAt).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <span className="flex items-center gap-2">
-              <Printer size={14} />
-              Print Slip
-            </span>
-          </Button>
-          {order.status === "processing" && (
+    <div className="print:text-black">
+      <PageHeader
+        back={<Link href="/admin/orders" className="mt-1.5 p-1.5 text-asur-silver hover:text-asur-white print:hidden" aria-label="Back to orders"><ArrowLeft size={18} /></Link>}
+        title={formatOrderNumber(order.number)}
+        subtitle={
+          <span className="flex flex-wrap items-center gap-3">
+            <OrderStatusPill status={status} label={ORDER_STATUS_LABEL[status]} />
+            <PaymentPill status={order.paymentStatus} />
+            <span>{order.createdAt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</span>
+          </span>
+        }
+        actions={
+          (status === "confirmed" || status === "processing") && (
             <Link href={`/admin/dispatch/${order.id}`}>
-              <Button size="sm">
-                <span className="flex items-center gap-2">
-                  <Truck size={14} />
-                  Start Dispatch
-                </span>
-              </Button>
+              <Button size="sm"><span className="flex items-center gap-2"><ScanLine size={14} /> Pack &amp; scan</span></Button>
             </Link>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Order Items */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-asur-carbon border border-asur-graphite">
-            <div className="px-5 py-4 border-b border-asur-graphite flex items-center gap-2">
-              <Package size={16} className="text-asur-slate" />
-              <h2 className="text-heading-sm font-medium text-asur-white">
-                Order Items
-              </h2>
-            </div>
-            <div className="divide-y divide-asur-graphite/50">
-              {order.items.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 px-5 py-4">
-                  <div className="w-14 h-16 bg-asur-graphite flex-shrink-0 flex items-center justify-center">
-                    <span className="text-[9px] text-asur-slate">ASUR</span>
+      <div className="grid xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2 space-y-6">
+          <Panel title={`Items (${units})`} action={<span className="text-caption text-asur-slate">Scanned {scanned}/{units}</span>}>
+            <ul className="-my-3 divide-y divide-asur-graphite">
+              {order.items.map((i) => (
+                <li key={i.id} className="flex items-center gap-4 py-3">
+                  <div className="relative w-12 h-14 shrink-0 bg-asur-graphite overflow-hidden">
+                    {i.image && <SmartImage src={i.image} alt="" fill sizes="48px" className="object-cover" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-body-sm font-medium text-asur-white">
-                      {item.productName}
-                    </p>
-                    <p className="text-caption text-asur-slate mt-0.5">
-                      Size: {item.size} • Color: {item.color.name} • SKU: {item.variantSku}
-                    </p>
-                    <p className="text-caption text-asur-slate">
-                      Barcode: {item.variantBarcode}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-body-sm text-asur-white font-medium">
-                      {formatPrice(item.price)} × {item.quantity}
-                    </p>
-                    <p className="text-body-sm text-asur-silver">
-                      {formatPrice(item.total)}
+                    {i.variantId ? (
+                      <p className="text-body-sm text-asur-white truncate">{i.productName}</p>
+                    ) : (
+                      <p className="text-body-sm text-asur-white truncate">{i.productName} <span className="text-caption text-asur-slate">(deleted)</span></p>
+                    )}
+                    <p className="flex items-center gap-1.5 text-caption text-asur-silver">
+                      <span className="w-2.5 h-2.5 rounded-full border border-asur-iron" style={{ background: i.colorHex }} />
+                      {i.colorName} / {i.size} · <span className="font-mono">{i.sku}</span>
                     </p>
                   </div>
-                </div>
+                  <p className="text-body-sm text-asur-silver whitespace-nowrap">{i.quantity} × {formatPrice(i.unitPrice)}</p>
+                  <p className="w-24 text-right text-body-sm text-asur-white">{formatPrice(i.total)}</p>
+                </li>
               ))}
-            </div>
+            </ul>
+            <dl className="mt-5 pt-4 border-t border-asur-graphite space-y-1.5 text-body-sm max-w-xs ml-auto">
+              <div className="flex justify-between"><dt className="text-asur-silver">Subtotal</dt><dd className="text-asur-white">{formatPrice(order.subtotal)}</dd></div>
+              <div className="flex justify-between"><dt className="text-asur-silver">Shipping</dt><dd className="text-asur-white">{order.shippingFee ? formatPrice(order.shippingFee) : "Free"}</dd></div>
+              <div className="flex justify-between pt-2 border-t border-asur-graphite"><dt className="text-asur-white font-medium">Total</dt><dd className="text-asur-white font-medium">{formatPrice(order.total)}</dd></div>
+              <div className="flex justify-between"><dt className="text-asur-slate">Collect on delivery</dt><dd className="text-asur-slate">{order.paymentStatus === "pending" ? formatPrice(order.total) : "—"}</dd></div>
+            </dl>
+          </Panel>
 
-            {/* Order Totals */}
-            <div className="px-5 py-4 border-t border-asur-graphite space-y-2">
-              <div className="flex justify-between text-body-sm">
-                <span className="text-asur-silver">Subtotal</span>
-                <span className="text-asur-white">{formatPrice(order.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-body-sm">
-                <span className="text-asur-silver">Shipping</span>
-                <span className="text-asur-white">
-                  {order.shippingCost === 0 ? "Free" : formatPrice(order.shippingCost)}
-                </span>
-              </div>
-              {order.discount > 0 && (
-                <div className="flex justify-between text-body-sm">
-                  <span className="text-asur-silver">Discount</span>
-                  <span className="text-status-success">-{formatPrice(order.discount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-body-md font-medium pt-2 border-t border-asur-graphite">
-                <span className="text-asur-white">Total</span>
-                <span className="text-asur-white">{formatPrice(order.total)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Dispatch Verification Status */}
-          {order.dispatchVerification && (
-            <div className="bg-asur-carbon border border-asur-graphite">
-              <div className="px-5 py-4 border-b border-asur-graphite">
-                <h2 className="text-heading-sm font-medium text-asur-white">
-                  Dispatch Verification
-                </h2>
-              </div>
-              <div className="px-5 py-4">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-asur-graphite">
-                        <th className="text-left py-2 text-caption text-asur-slate uppercase tracking-wider">Product</th>
-                        <th className="text-center py-2 text-caption text-asur-slate uppercase tracking-wider">Required</th>
-                        <th className="text-center py-2 text-caption text-asur-slate uppercase tracking-wider">Scanned</th>
-                        <th className="text-center py-2 text-caption text-asur-slate uppercase tracking-wider">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {order.dispatchVerification.items.map((dItem) => {
-                        const orderItem = order.items.find((oi) => oi.id === dItem.orderItemId);
-                        return (
-                          <tr key={dItem.orderItemId} className="border-b border-asur-graphite/50">
-                            <td className="py-2 text-body-sm text-asur-white">
-                              {orderItem?.productName} ({orderItem?.size}/{orderItem?.color.name})
-                            </td>
-                            <td className="py-2 text-center text-body-sm text-asur-silver">
-                              {dItem.requiredQuantity}
-                            </td>
-                            <td className="py-2 text-center text-body-sm text-asur-silver">
-                              {dItem.scannedQuantity}
-                            </td>
-                            <td className="py-2 text-center">
-                              {dItem.verified ? (
-                                <span className="text-caption text-status-success">✓ Verified</span>
-                              ) : (
-                                <span className="text-caption text-status-warning">Pending</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="mt-4 p-3 bg-status-success/10 border border-status-success/20">
-                  <p className="text-body-sm text-status-success font-medium">
-                    ✓ All items verified — Ready for Dispatch
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          <Panel title="Timeline">
+            <ol className="space-y-4">
+              {order.events.map((e) => (
+                <li key={e.id} className="flex gap-3">
+                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${e.type === "note" ? "bg-accent-primary" : e.type === "payment" ? "bg-status-success" : "bg-asur-silver"}`} />
+                  <div>
+                    <p className="text-body-sm text-asur-white">{e.message}</p>
+                    <p className="text-caption text-asur-slate">{e.createdAt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </Panel>
         </div>
 
-        {/* Sidebar */}
         <div className="space-y-6">
-          {/* Customer */}
-          <div className="bg-asur-carbon border border-asur-graphite p-5">
-            <h3 className="text-body-sm font-medium text-asur-white uppercase tracking-wider mb-3">
-              Customer
-            </h3>
-            <p className="text-body-sm text-asur-white">
-              {order.customer.firstName} {order.customer.lastName}
-            </p>
-            <p className="text-caption text-asur-slate">{order.customer.email}</p>
-            <p className="text-caption text-asur-slate">{order.customer.phone}</p>
-            <p className="text-caption text-asur-slate mt-2">
-              {order.customer.totalOrders} orders • {formatPrice(order.customer.totalSpent)} total spent
-            </p>
-          </div>
+          <OrderActions
+            orderId={order.id}
+            status={status}
+            next={ORDER_TRANSITIONS[status]}
+            paymentStatus={order.paymentStatus}
+            allScanned={scanned === units}
+          />
 
-          {/* Shipping Address */}
-          <div className="bg-asur-carbon border border-asur-graphite p-5">
-            <h3 className="text-body-sm font-medium text-asur-white uppercase tracking-wider mb-3">
-              Shipping Address
-            </h3>
-            <div className="text-body-sm text-asur-silver space-y-0.5">
-              <p>{order.shippingAddress.firstName} {order.shippingAddress.lastName}</p>
-              <p>{order.shippingAddress.street}</p>
-              {order.shippingAddress.apartment && <p>{order.shippingAddress.apartment}</p>}
-              <p>
-                {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}
-              </p>
-              <p>{order.shippingAddress.country}</p>
-              <p className="pt-1 text-asur-slate">{order.shippingAddress.phone}</p>
-            </div>
-          </div>
+          <Panel title="Customer">
+            <p className="text-body-sm text-asur-white">{order.customer.name}</p>
+            <a href={`mailto:${order.customer.email}`} className="block text-body-sm text-accent-primary hover:underline">{order.customer.email}</a>
+            <a href={`tel:${order.shipPhone}`} className="block text-body-sm text-asur-silver hover:text-asur-white">{order.shipPhone}</a>
+            <Link href={`/admin/orders?q=${encodeURIComponent(order.customer.email)}`} className="mt-3 inline-block text-caption text-asur-slate hover:text-asur-white">
+              {order.customer._count.orders} order{order.customer._count.orders === 1 ? "" : "s"} from this customer →
+            </Link>
+          </Panel>
 
-          {/* Actions */}
-          <div className="bg-asur-carbon border border-asur-graphite p-5">
-            <h3 className="text-body-sm font-medium text-asur-white uppercase tracking-wider mb-3">
-              Actions
-            </h3>
-            <div className="space-y-2">
-              {order.status === "pending" && (
-                <Button variant="primary" size="sm" fullWidth>
-                  Confirm Order
-                </Button>
-              )}
-              {order.status === "confirmed" && (
-                <Button variant="primary" size="sm" fullWidth>
-                  Start Processing
-                </Button>
-              )}
-              {order.status === "processing" && (
-                <Link href={`/admin/dispatch/${order.id}`} className="block">
-                  <Button variant="primary" size="sm" fullWidth>
-                    Start Dispatch Verification
-                  </Button>
-                </Link>
-              )}
-              {order.status === "ready_for_dispatch" && (
-                <Button variant="primary" size="sm" fullWidth>
-                  Mark as Dispatched
-                </Button>
-              )}
-              <Button variant="outline" size="sm" fullWidth>
-                Print Packing Slip
-              </Button>
-              {order.status !== "cancelled" && order.status !== "delivered" && (
-                <Button variant="danger" size="sm" fullWidth>
-                  Cancel Order
-                </Button>
-              )}
-            </div>
-          </div>
+          <Panel title="Ship to">
+            <p className="text-body-sm leading-relaxed text-asur-ash">
+              {order.shipName}<br />{order.shipAddress}{order.shipArea ? `, ${order.shipArea}` : ""}<br />{order.shipCity}<br />{order.shipPhone}
+            </p>
+            {order.shipNotes && <p className="mt-3 p-3 bg-asur-graphite text-caption text-asur-silver">“{order.shipNotes}”</p>}
+          </Panel>
         </div>
       </div>
     </div>

@@ -2,18 +2,23 @@ import { Toaster } from "react-hot-toast";
 import { Navigation } from "@/components/storefront/Navigation";
 import { CartDrawer } from "@/components/storefront/CartDrawer";
 import { getCategoriesWithCounts } from "@/lib/server/catalog";
+import { getSettings } from "@/lib/server/settings";
 
 export default async function StorefrontLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const categories = (await getCategoriesWithCounts()).filter((c) => c._count.products > 0);
+  const [allCategories, settings] = await Promise.all([getCategoriesWithCounts(), getSettings()]);
+  const categories = allCategories.filter((c) => c._count.products > 0);
 
   return (
     <>
-      <Navigation categories={categories.map((c) => ({ name: c.name, slug: c.slug }))} />
-      <CartDrawer />
+      <Navigation
+        categories={categories.map((c) => ({ name: c.name, slug: c.slug }))}
+        announcements={settings.announcements.filter(Boolean)}
+      />
+      <CartDrawer freeShippingAt={settings.shipping.freeThreshold} />
       <main>{children}</main>
       <Toaster
         position="bottom-center"

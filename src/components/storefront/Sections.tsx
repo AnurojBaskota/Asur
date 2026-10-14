@@ -5,10 +5,12 @@ import { SmartImage } from "@/components/ui/SmartImage";
 import { NewsletterForm } from "@/components/storefront/NewsletterForm";
 import { Reveal } from "@/components/storefront/Reveal";
 import type { Product } from "@/types";
+import type { StoreSettings } from "@/lib/settings";
+import { formatPrice } from "@/lib/format";
+import { getFooterPages, getSettings } from "@/lib/server/settings";
 
 export type CategoryTile = { name: string; slug: string; image: string | null; description?: string | null; count: number };
 
-const unsplash = (id: string, w = 2000) => `https://images.unsplash.com/photo-${id}?w=${w}&q=80&auto=format&fit=crop`;
 
 /* ------------------------------------------------------------------ */
 /* Shared bits                                                         */
@@ -58,8 +60,8 @@ const container = "max-w-9xl mx-auto px-4 sm:px-6 lg:px-10";
 /* Sections                                                            */
 /* ------------------------------------------------------------------ */
 
-export function ValuesMarquee() {
-  const words = ["Strength", "Discipline", "Identity", "Precision"];
+export function ValuesMarquee({ words }: { words: string[] }) {
+  if (!words.length) return null;
   return (
     <div className="relative overflow-hidden border-y border-asur-graphite bg-asur-black py-5 sm:py-7" aria-hidden>
       <div className="flex w-max animate-marquee [animation-duration:55s]">
@@ -78,10 +80,12 @@ export function ValuesMarquee() {
   );
 }
 
-export function TrustBar() {
+export function TrustBar({ shipping }: { shipping: StoreSettings["shipping"] }) {
   const items = [
-    { icon: Truck, title: "Free shipping", text: "On orders above Rs. 5,000" },
-    { icon: RotateCcw, title: "7-day returns", text: "Unworn, tags attached" },
+    shipping.freeThreshold > 0
+      ? { icon: Truck, title: "Free shipping", text: `On orders above ${formatPrice(shipping.freeThreshold)}` }
+      : { icon: Truck, title: "Free shipping", text: "On every order" },
+    { icon: RotateCcw, title: `${shipping.returnDays}-day returns`, text: shipping.returnConditions },
     { icon: ShieldCheck, title: "Built to last", text: "Heavyweight cotton, built to train in" },
     { icon: Mountain, title: "Designed in Nepal", text: "Made for athletes everywhere" },
   ];
@@ -172,38 +176,36 @@ export function Categories({ categories }: { categories: CategoryTile[] }) {
   );
 }
 
-export function CampaignSection() {
+export function CampaignSection({ c }: { c: StoreSettings["campaign"] }) {
+  if (!c.enabled) return null;
   return (
     <section className="relative overflow-hidden bg-asur-carbon">
       <div className="grid lg:grid-cols-2">
         <div className="relative aspect-[4/5] lg:aspect-auto lg:min-h-[820px] grain">
           <SmartImage
-            src={unsplash("1770616756218-f0abe20da404")}
-            alt="ASUR campaign — athlete under red light"
+            src={c.image}
+            alt={c.caption || c.title}
             fill
             sizes="(min-width: 1024px) 50vw, 100vw"
             className="object-cover"
           />
           <span className="absolute bottom-5 left-5 font-mono text-[11px] uppercase tracking-[0.16em] text-asur-white/70">
-            Campaign — Discipline, 2026
+            {c.caption}
           </span>
         </div>
         <div className="flex items-center px-5 py-16 sm:px-12 lg:px-20">
           <Reveal className="max-w-xl">
-            <Eyebrow className="mb-6">The ASUR philosophy</Eyebrow>
+            <Eyebrow className="mb-6">{c.eyebrow}</Eyebrow>
             <h2 className="font-display condensed font-black uppercase text-asur-white leading-[0.85] text-[clamp(3.25rem,6.5vw,6.5rem)]">
-              Discipline is the{" "}
-              <span className="text-transparent [-webkit-text-stroke:2px_var(--color-accent-primary)]">foundation.</span>
+              {c.title}{" "}
+              <span className="text-transparent [-webkit-text-stroke:2px_var(--color-accent-primary)]">{c.outlineWord}</span>
             </h2>
-            <p className="mt-8 text-[16px] leading-relaxed text-asur-ash">
-              Every piece is designed with purpose. Heavier fabric that holds its shape, armholes cut for full range,
-              collars that don&apos;t give up after ten washes. We build apparel that matches the intensity of your training.
-            </p>
+            <p className="mt-8 text-[16px] leading-relaxed text-asur-ash">{c.body}</p>
             <Link
-              href="/shop"
+              href={c.ctaHref}
               className="group mt-10 inline-flex items-center gap-3 h-12 pl-6 pr-5 bg-asur-bone text-asur-black text-[13px] font-semibold uppercase tracking-[0.12em] hover:bg-asur-white transition-colors"
             >
-              Explore the collection
+              {c.ctaLabel}
               <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
             </Link>
           </Reveal>
@@ -213,31 +215,23 @@ export function CampaignSection() {
   );
 }
 
-export function CraftSection() {
-  const specs = [
-    { value: "280", unit: "GSM", title: "Heavyweight cotton", text: "Dense combed cotton that drapes with structure and holds its shape set after set." },
-    { value: "01", unit: "", title: "Dropped shoulder", text: "An oversized block with a lowered shoulder seam for a relaxed, boxy silhouette." },
-    { value: "02", unit: "", title: "Raw-cut armholes", text: "Sleeveless cut deep and low so nothing restricts your shoulders on pressing days." },
-    { value: "03", unit: "", title: "Ribbed collars", text: "Thick ribbed necklines designed to keep their shape wash after wash." },
-  ];
+export function CraftSection({ c }: { c: StoreSettings["craft"] }) {
+  if (!c.enabled) return null;
+  const specs = c.specs;
   return (
     <section className="py-20 sm:py-32 border-b border-asur-graphite">
       <div className={container}>
         <div className="grid lg:grid-cols-12 gap-12">
           <Reveal className="lg:col-span-4">
-            <Eyebrow className="mb-3">Construction</Eyebrow>
+            <Eyebrow className="mb-3">{c.eyebrow}</Eyebrow>
             <h2 className="font-display condensed font-black uppercase text-asur-white leading-[0.85] text-[clamp(3rem,6vw,5.5rem)]">
-              Built
-              <br />
-              different
+              {c.title}
             </h2>
-            <p className="mt-6 max-w-sm text-[15px] leading-relaxed text-asur-silver">
-              Fashion details, athletic engineering. Every ASUR piece is cut for movement first and style a close second.
-            </p>
+            <p className="mt-6 max-w-sm text-[15px] leading-relaxed text-asur-silver">{c.body}</p>
           </Reveal>
           <div className="lg:col-span-8 grid sm:grid-cols-2 border-t border-l border-asur-graphite">
             {specs.map((s, i) => (
-              <Reveal key={s.title} delay={i * 80} className="border-r border-b border-asur-graphite p-6 sm:p-8">
+              <Reveal key={`${s.title}-${i}`} delay={i * 80} className="border-r border-b border-asur-graphite p-6 sm:p-8">
                 <p className="font-display condensed font-black text-asur-white leading-none text-7xl sm:text-8xl">
                   {s.value}
                   <span className="ml-1 font-mono text-sm font-medium text-accent-primary align-top">{s.unit}</span>
@@ -273,12 +267,13 @@ export function NewArrivals({ products: newProducts }: { products: Product[] }) 
   );
 }
 
-export function BrandStory() {
+export function BrandStory({ c }: { c: StoreSettings["story"] }) {
+  if (!c.enabled) return null;
   return (
     <section className="relative min-h-[90svh] flex items-end overflow-hidden grain">
       <SmartImage
-        src={unsplash("1692452376160-14194abefba8", 2400)}
-        alt="A lone trekker beneath snow-capped Himalayan peaks"
+        src={c.image}
+        alt=""
         fill
         sizes="100vw"
         className="object-cover"
@@ -287,24 +282,15 @@ export function BrandStory() {
       <div className={`${container} relative w-full py-20 sm:py-28`}>
         <div className="grid lg:grid-cols-12 gap-10 items-end">
           <Reveal className="lg:col-span-7">
-            <Eyebrow className="mb-4">Our story</Eyebrow>
+            <Eyebrow className="mb-4">{c.eyebrow}</Eyebrow>
             <h2 className="font-display condensed font-black uppercase text-asur-white leading-[0.85] text-[clamp(3.5rem,8vw,8rem)]">
-              Born beneath
-              <br />
-              the Himalaya
+              {c.title}
             </h2>
           </Reveal>
           <Reveal delay={150} className="lg:col-span-5 space-y-5 text-[15px] leading-relaxed text-asur-ash">
-            <p>
-              ASUR takes its name from the asuras of Nepali and South Asian mythology — raw, untamed power that exists
-              before discipline shapes it into strength.
-            </p>
-            <p>
-              Born in Nepal with international ambition, we make apparel for athletes who know real strength comes
-              from consistency, not shortcuts. Every thread, every cut is intentional — like the training that shapes you.
-            </p>
+            {c.paragraphs.map((para, i) => <p key={i}>{para}</p>)}
             <div className="grid grid-cols-3 gap-4 pt-6 border-t border-white/15">
-              {["Strength", "Discipline", "Identity"].map((v) => (
+              {c.values.map((v) => (
                 <p key={v} className="font-display condensed font-black uppercase text-3xl text-asur-white">{v}</p>
               ))}
             </div>
@@ -315,22 +301,19 @@ export function BrandStory() {
   );
 }
 
-export function Newsletter() {
+export function Newsletter({ c }: { c: StoreSettings["newsletter"] }) {
+  if (!c.enabled) return null;
   return (
     <section className="py-20 sm:py-32 bg-asur-bone text-asur-black">
       <div className={`${container} grid lg:grid-cols-2 gap-10 items-end`}>
         <Reveal>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-accent-secondary mb-4">The ASUR Club</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-accent-secondary mb-4">{c.eyebrow}</p>
           <h2 className="font-display condensed font-black uppercase leading-[0.85] text-[clamp(3.25rem,7vw,7rem)]">
-            First access.
-            <br />
-            Every drop.
+            {c.title}
           </h2>
         </Reveal>
         <Reveal delay={120}>
-          <p className="text-[16px] text-asur-steel mb-6 max-w-md">
-            Members hear about new drops, restocks and training events before anyone else. 
-          </p>
+          <p className="text-[16px] text-asur-steel mb-6 max-w-md">{c.body}</p>
           <NewsletterForm />
           <p className="mt-3 text-[12px] text-asur-slate">No spam. Unsubscribe anytime.</p>
         </Reveal>
@@ -339,7 +322,13 @@ export function Newsletter() {
   );
 }
 
-export function Footer() {
+export async function Footer() {
+  const [{ brand }, pages] = await Promise.all([getSettings(), getFooterPages()]);
+  const socials = [
+    { label: "Instagram", href: brand.instagram },
+    { label: "TikTok", href: brand.tiktok },
+    { label: "Facebook", href: brand.facebook },
+  ].filter((l) => l.href);
   const cols = [
     {
       title: "Shop",
@@ -349,34 +338,24 @@ export function Footer() {
         { label: "Sale", href: "/shop?filter=sale" },
       ],
     },
+    { title: "Help", links: pages.map((p) => ({ label: p.title, href: `/pages/${p.slug}` })) },
     {
-      title: "Help",
+      title: "Contact",
       links: [
-        { label: "Shipping", href: "#" },
-        { label: "Returns & exchanges", href: "#" },
-        { label: "Size guide", href: "#" },
-        { label: "Contact us", href: "#" },
+        ...(brand.contactEmail ? [{ label: brand.contactEmail, href: `mailto:${brand.contactEmail}` }] : []),
+        ...(brand.contactPhone ? [{ label: brand.contactPhone, href: `tel:${brand.contactPhone.replace(/\s/g, "")}` }] : []),
+        ...socials,
       ],
     },
-    {
-      title: "Follow",
-      links: [
-        { label: "Instagram", href: "#" },
-        { label: "TikTok", href: "#" },
-        { label: "Facebook", href: "#" },
-      ],
-    },
-  ];
+  ].filter((c) => c.links.length);
 
   return (
     <footer className="bg-asur-black border-t border-asur-graphite overflow-hidden">
       <div className={`${container} pt-16 sm:pt-24`}>
         <div className="grid grid-cols-2 md:grid-cols-12 gap-10">
           <div className="col-span-2 md:col-span-5">
-            <p className="font-display condensed font-black text-3xl tracking-[0.08em] text-asur-white">ASUR</p>
-            <p className="mt-4 max-w-xs text-[14px] leading-relaxed text-asur-slate">
-              Premium gym apparel. Strength meets discipline. Born in Nepal, built for athletes everywhere.
-            </p>
+            <p className="font-display condensed font-black text-3xl tracking-[0.08em] text-asur-white">{brand.name}</p>
+            <p className="mt-4 max-w-xs text-[14px] leading-relaxed text-asur-slate">{brand.footerText}</p>
           </div>
           {cols.map((col) => (
             <div key={col.title} className="md:col-span-2 last:col-span-2 md:last:col-span-3">
@@ -395,7 +374,7 @@ export function Footer() {
         </div>
 
         <div className="mt-16 flex flex-col sm:flex-row justify-between gap-3 py-6 border-t border-asur-graphite font-mono text-[11px] uppercase tracking-[0.14em] text-asur-slate">
-          <p>© {new Date().getFullYear()} ASUR. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {brand.name}. All rights reserved.</p>
           <p>Prices in NPR · Nepal</p>
         </div>
       </div>
@@ -403,7 +382,7 @@ export function Footer() {
         aria-hidden
         className="select-none text-center font-display condensed font-black uppercase leading-[0.72] text-asur-graphite text-[34vw] -mb-[4vw]"
       >
-        ASUR
+        {brand.name}
       </p>
     </footer>
   );

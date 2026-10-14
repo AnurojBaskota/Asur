@@ -10,18 +10,22 @@ import { useCartStore } from "@/stores/cart";
 import { ProductCard } from "@/components/ui/ProductCard";
 import { SmartImage } from "@/components/ui/SmartImage";
 import type { Product, ProductColor } from "@/types";
+import type { SizeChart, StoreSettings } from "@/lib/settings";
 
 const SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "3XL"];
 
-const SIZE_CHART = [
-  { size: "S", chest: "104", length: "72", shoulder: "50" },
-  { size: "M", chest: "110", length: "74", shoulder: "52" },
-  { size: "L", chest: "116", length: "76", shoulder: "54" },
-  { size: "XL", chest: "122", length: "78", shoulder: "56" },
-  { size: "XXL", chest: "128", length: "80", shoulder: "58" },
-];
 
-export function ProductDetail({ product, related }: { product: Product; related: Product[] }) {
+export function ProductDetail({
+  product,
+  related,
+  shipping,
+  sizeChart,
+}: {
+  product: Product;
+  related: Product[];
+  shipping: StoreSettings["shipping"];
+  sizeChart: SizeChart | null;
+}) {
   const addItem = useCartStore((s) => s.addItem);
   const openCart = useCartStore((s) => s.openCart);
 
@@ -176,9 +180,11 @@ export function ProductDetail({ product, related }: { product: Product; related:
                     <p className={cn("text-[13px]", sizeError && !variant ? "text-status-error" : "text-asur-silver")}>
                       {sizeError && !variant ? "Please select a size" : <>Size{size && <>: <span className="text-asur-white font-medium">{size}</span></>}</>}
                     </p>
-                    <button onClick={() => setSizeGuide(true)} className="flex items-center gap-1.5 text-[13px] text-asur-silver underline underline-offset-4 hover:text-asur-white">
-                      <Ruler size={14} /> Size guide
-                    </button>
+                    {sizeChart && (
+                      <button onClick={() => setSizeGuide(true)} className="flex items-center gap-1.5 text-[13px] text-asur-silver underline underline-offset-4 hover:text-asur-white">
+                        <Ruler size={14} /> Size guide
+                      </button>
+                    )}
                   </div>
                   <div className="mt-3 grid grid-cols-5 gap-2">
                     {sizesForColor.map((v) => {
@@ -233,8 +239,8 @@ export function ProductDetail({ product, related }: { product: Product; related:
 
                 {/* Perks */}
                 <ul className="mt-6 grid grid-cols-2 gap-3 text-[12px] text-asur-silver">
-                  <li className="flex items-center gap-2"><Truck size={15} className="text-accent-primary" /> Free shipping over Rs. 5,000</li>
-                  <li className="flex items-center gap-2"><RotateCcw size={15} className="text-accent-primary" /> 7-day easy returns</li>
+                  <li className="flex items-center gap-2"><Truck size={15} className="text-accent-primary" /> {shipping.freeThreshold > 0 ? `Free shipping over ${formatPrice(shipping.freeThreshold)}` : "Free shipping"}</li>
+                  <li className="flex items-center gap-2"><RotateCcw size={15} className="text-accent-primary" /> {shipping.returnDays}-day easy returns</li>
                 </ul>
 
                 {/* Accordions */}
@@ -251,8 +257,13 @@ export function ProductDetail({ product, related }: { product: Product; related:
                     </dl>
                   </Accordion>
                   <Accordion title="Shipping & returns">
-                    <p>Free standard shipping on orders above Rs. 5,000. Standard delivery takes 3–5 business days.</p>
-                    <p className="mt-2">Returns accepted within 7 days on unworn items with tags attached.</p>
+                    <p>
+                      {shipping.freeThreshold > 0
+                        ? `Free standard shipping on orders above ${formatPrice(shipping.freeThreshold)}, otherwise ${formatPrice(shipping.flatFee)}.`
+                        : "Free standard shipping on every order."}{" "}
+                      Delivery takes {shipping.deliveryDays}. Pay with cash on delivery.
+                    </p>
+                    <p className="mt-2">Returns accepted within {shipping.returnDays} days — {shipping.returnConditions.toLowerCase()}.</p>
                   </Accordion>
                 </div>
               </div>
@@ -283,7 +294,7 @@ export function ProductDetail({ product, related }: { product: Product; related:
       )}
 
       {/* Size guide drawer */}
-      {sizeGuide && (
+      {sizeGuide && sizeChart && (
         <div className="fixed inset-0 z-[70] flex justify-end" role="dialog" aria-modal="true" aria-label="Size guide">
           <div className="absolute inset-0 bg-black/70 animate-fade-in" onClick={() => setSizeGuide(false)} />
           <div className="relative w-full max-w-md h-full bg-asur-carbon border-l border-asur-graphite p-6 sm:p-8 overflow-y-auto animate-[slideInRight_.35s_ease-out]">
@@ -291,27 +302,28 @@ export function ProductDetail({ product, related }: { product: Product; related:
               <h2 className="font-display condensed font-black uppercase text-4xl text-asur-white">Size guide</h2>
               <button onClick={() => setSizeGuide(false)} className="p-2 -mr-2 text-asur-silver hover:text-asur-white" aria-label="Close size guide"><X size={20} /></button>
             </div>
-            <p className="text-[14px] text-asur-silver mb-6">Garment measurements in centimetres, measured flat. Compare against a tee you already own.</p>
-            <table className="w-full text-[14px]">
-              <thead>
-                <tr className="border-b border-asur-iron text-left font-mono text-[11px] uppercase tracking-[0.12em] text-asur-slate">
-                  <th className="py-3 font-medium">Size</th><th className="py-3 font-medium">Chest</th><th className="py-3 font-medium">Length</th><th className="py-3 font-medium">Shoulder</th>
-                </tr>
-              </thead>
-              <tbody>
-                {SIZE_CHART.map((r) => (
-                  <tr key={r.size} className={cn("border-b border-asur-graphite", r.size === size && "bg-white/5")}>
-                    <td className="py-3 font-medium text-asur-white">{r.size}</td>
-                    <td className="py-3 text-asur-ash">{r.chest}</td>
-                    <td className="py-3 text-asur-ash">{r.length}</td>
-                    <td className="py-3 text-asur-ash">{r.shoulder}</td>
+            {sizeChart.note && <p className="text-[14px] text-asur-silver mb-6">{sizeChart.note}</p>}
+            <div className="overflow-x-auto">
+              <table className="w-full text-[14px]">
+                <thead>
+                  <tr className="border-b border-asur-iron text-left font-mono text-[11px] uppercase tracking-[0.12em] text-asur-slate">
+                    {sizeChart.columns.map((c) => <th key={c} className="py-3 pr-3 font-medium">{c}</th>)}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {sizeChart.rows.map((r, ri) => (
+                    <tr key={ri} className={cn("border-b border-asur-graphite", r[0] === size && "bg-white/5")}>
+                      {r.map((cell, ci) => (
+                        <td key={ci} className={cn("py-3 pr-3", ci === 0 ? "font-medium text-asur-white" : "text-asur-ash")}>{cell}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <div className="mt-8 p-4 border border-asur-graphite text-[13px] text-asur-silver space-y-2">
               <p className="flex gap-2"><Check size={15} className="shrink-0 text-accent-primary mt-0.5" /> Between sizes? Size up for a roomier drape.</p>
-              <p className="flex gap-2"><Check size={15} className="shrink-0 text-accent-primary mt-0.5" /> Wrong fit? Exchanges within 7 days.</p>
+              <p className="flex gap-2"><Check size={15} className="shrink-0 text-accent-primary mt-0.5" /> Wrong fit? Exchanges within {shipping.returnDays} days.</p>
             </div>
           </div>
         </div>

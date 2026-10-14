@@ -8,8 +8,10 @@ import {
   ShoppingCart,
   Package,
   Warehouse,
-  Scan,
   FolderTree,
+  Users,
+  Settings,
+  FileText,
   ChevronDown,
   LogOut,
   Menu,
@@ -29,13 +31,15 @@ const navigation = [
     label: "Orders",
     icon: ShoppingCart,
     children: [
-      { label: "All Orders", href: "/admin/orders" },
-      { label: "Pending", href: "/admin/orders?status=pending" },
-      { label: "Processing", href: "/admin/orders?status=processing" },
-      { label: "Ready for Dispatch", href: "/admin/orders?status=ready_for_dispatch" },
-      { label: "Dispatched", href: "/admin/orders?status=dispatched" },
-      { label: "Cancelled", href: "/admin/orders?status=cancelled" },
+      { label: "All orders", href: "/admin/orders" },
+      { label: "Awaiting confirmation", href: "/admin/orders?status=pending" },
+      { label: "Pack & dispatch", href: "/admin/dispatch" },
     ],
+  },
+  {
+    label: "Customers",
+    href: "/admin/customers",
+    icon: Users,
   },
   {
     label: "Products",
@@ -59,18 +63,21 @@ const navigation = [
     ],
   },
   {
-    label: "Dispatch",
-    icon: Scan,
-    children: [
-      { label: "Scan & Verify", href: "/admin/dispatch" },
-    ],
+    label: "Store settings",
+    href: "/admin/settings",
+    icon: Settings,
+  },
+  {
+    label: "Pages",
+    href: "/admin/pages",
+    icon: FileText,
   },
 ];
 
 export function AdminSidebar({ email }: { email: string }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<string[]>(["Products", "Inventory"]);
+  const [expandedItems, setExpandedItems] = useState<string[]>(["Orders", "Products", "Inventory"]);
 
   const toggleExpand = (label: string) => {
     setExpandedItems((prev) =>

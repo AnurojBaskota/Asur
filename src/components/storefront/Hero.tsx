@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { ArrowRight, ArrowDown } from "lucide-react";
 import { SmartImage } from "@/components/ui/SmartImage";
+import type { StoreSettings } from "@/lib/settings";
 
-export function Hero() {
+export function Hero({ h }: { h: StoreSettings["hero"] }) {
   return (
     <section className="relative h-[100svh] min-h-[640px] max-h-[1100px] overflow-hidden bg-asur-black grain">
       <SmartImage
-        src="https://images.unsplash.com/photo-1549505415-e16dbd446231?w=2400&q=80&auto=format&fit=crop"
-        alt="Athlete in low light wearing ASUR"
+        src={h.image}
+        alt=""
         fill
         priority
         sizes="100vw"
@@ -19,41 +20,41 @@ export function Hero() {
       <div className="relative z-10 h-full max-w-9xl mx-auto px-4 sm:px-6 lg:px-10 flex flex-col pt-32 pb-8 sm:pb-10">
         <div className="flex items-start justify-between font-mono text-[11px] uppercase tracking-[0.16em] text-asur-ash">
           <p className="animate-slide-up">
-            <span className="text-accent-primary">Drop 01</span> — Foundation Collection
+            {h.eyebrow}
           </p>
           <p className="hidden sm:block text-right animate-slide-up">
-            Collection 2026
+            {h.sideNote}
             <br />
-            <span className="text-asur-slate">Born in Nepal</span>
+            <span className="text-asur-slate">{h.sideNoteSub}</span>
           </p>
         </div>
 
         <div className="mt-auto">
           <h1 className="font-display condensed font-black uppercase text-asur-white leading-[0.82] tracking-[-0.01em] text-[clamp(4.5rem,15vw,13.5rem)]">
-            <span className="block animate-slide-up">Built for</span>
+            <span className="block animate-slide-up">{h.titleLine1}</span>
             <span className="block animate-slide-up [animation-delay:120ms] [animation-fill-mode:both]">
-              the <span className="text-transparent [-webkit-text-stroke:2px_var(--color-asur-white)]">grind</span>
+              {h.titleLine2}{h.titleLine2 && " "}<span className="text-transparent [-webkit-text-stroke:2px_var(--color-asur-white)]">{h.outlineWord}</span>
             </span>
           </h1>
 
           <div className="mt-8 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
             <div className="max-w-md animate-fade-in [animation-delay:400ms] [animation-fill-mode:both]">
               <p className="text-[15px] sm:text-base leading-relaxed text-asur-ash">
-                Heavyweight oversized tees and raw-cut sleeveless, cut for the way you actually train. No excess. No compromise.
+                {h.subtitle}
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
-                  href="/shop"
+                  href={h.primaryHref}
                   className="group inline-flex items-center gap-3 bg-asur-bone text-asur-black pl-6 pr-5 h-12 text-[13px] font-semibold uppercase tracking-[0.12em] hover:bg-asur-white transition-colors"
                 >
-                  Shop the drop
+                  {h.primaryLabel}
                   <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                 </Link>
                 <Link
-                  href="/shop?filter=new"
+                  href={h.secondaryHref}
                   className="inline-flex items-center h-12 px-6 border border-asur-white/30 text-asur-white text-[13px] font-semibold uppercase tracking-[0.12em] hover:border-asur-white hover:bg-white/5 transition-colors"
                 >
-                  New in
+                  {h.secondaryLabel}
                 </Link>
               </div>
             </div>

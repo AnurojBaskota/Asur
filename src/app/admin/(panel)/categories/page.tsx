@@ -1,6 +1,7 @@
 import { db } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/session";
 import { CategoryManager } from "@/components/admin/CategoryManager";
+import { parseSizeChart } from "@/lib/settings";
 
 export default async function CategoriesPage() {
   await requireAdmin();
@@ -19,6 +20,7 @@ export default async function CategoriesPage() {
         image: c.image ?? "",
         sortOrder: c.sortOrder,
         productCount: c._count.products,
+        sizeChart: parseSizeChart(c.sizeChart),
       }))}
     />
   );

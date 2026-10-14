@@ -6,11 +6,11 @@ import { ArrowRight, Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { useCartStore } from "@/stores/cart";
 import { formatPrice } from "@/lib/format";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { useCartSync } from "./useCartSync";
 
-const FREE_SHIPPING_AT = 5000;
-
-export function CartDrawer() {
+export function CartDrawer({ freeShippingAt }: { freeShippingAt: number }) {
   const { items, isOpen, closeCart, removeItem, updateQuantity, getSubtotal, getItemCount } = useCartStore();
+  useCartSync(isOpen);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -26,8 +26,8 @@ export function CartDrawer() {
   if (!isOpen) return null;
 
   const subtotal = getSubtotal();
-  const remaining = Math.max(0, FREE_SHIPPING_AT - subtotal);
-  const progress = Math.min(100, (subtotal / FREE_SHIPPING_AT) * 100);
+  const remaining = Math.max(0, freeShippingAt - subtotal);
+  const progress = freeShippingAt > 0 ? Math.min(100, (subtotal / freeShippingAt) * 100) : 100;
 
   return (
     <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Shopping bag">

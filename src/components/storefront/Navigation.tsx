@@ -7,12 +7,6 @@ import { ArrowRight, Menu, Search, ShoppingBag, X } from "lucide-react";
 import { useCartStore } from "@/stores/cart";
 import { cn } from "@/lib/utils";
 
-const TICKER = [
-  "Free shipping across Nepal on orders above Rs. 5,000",
-  "7-day easy returns",
-  "Foundation Drop 01 — out now",
-  "Born in Nepal",
-];
 
 const subscribeNoop = () => () => {};
 /** True only after hydration, so persisted cart counts don't cause mismatches. */
@@ -20,7 +14,7 @@ function useHydrated() {
   return useSyncExternalStore(subscribeNoop, () => true, () => false);
 }
 
-export function Navigation({ categories }: { categories: { name: string; slug: string }[] }) {
+export function Navigation({ categories, announcements }: { categories: { name: string; slug: string }[]; announcements: string[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const hydrated = useHydrated();
@@ -65,11 +59,11 @@ export function Navigation({ categories }: { categories: { name: string; slug: s
     <>
       <header className="fixed inset-x-0 top-0 z-50">
         {/* Ticker */}
-        <div className="h-8 overflow-hidden bg-asur-bone text-asur-black">
+        {announcements.length > 0 && <div className="h-8 overflow-hidden bg-asur-bone text-asur-black">
           <div className="flex w-max animate-marquee">
             {[0, 1].map((dup) => (
               <div key={dup} className="flex shrink-0" aria-hidden={dup === 1}>
-                {[...TICKER, ...TICKER].map((t, i) => (
+                {[...announcements, ...announcements].map((t, i) => (
                   <span key={i} className="flex items-center gap-6 px-6 h-8 font-mono text-[11px] uppercase tracking-[0.14em] whitespace-nowrap">
                     {t} <span className="text-accent-secondary">✦</span>
                   </span>
@@ -77,7 +71,7 @@ export function Navigation({ categories }: { categories: { name: string; slug: s
               </div>
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* Main bar */}
         <div

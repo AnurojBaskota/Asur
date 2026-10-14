@@ -1,102 +1,63 @@
-"use client";
-
-import { useState, useRef, useEffect } from "react";
-import { orders, formatPrice } from "@/lib/data";
-import { Button } from "@/components/ui/Button";
-import { OrderStatusBadge } from "@/components/ui/Badge";
-import { ScanLine, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { PackageCheck, ScanLine, Truck } from "lucide-react";
+import { db } from "@/lib/server/db";
+import { requireAdmin } from "@/lib/server/session";
+import { formatPrice } from "@/lib/format";
+import { ORDER_STATUS_LABEL, formatOrderNumber, type OrderStatusValue } from "@/lib/settings";
+import { EmptyState, OrderStatusPill, PageHeader } from "@/components/admin/ui";
 
-export default function DispatchPage() {
-  // Show orders that need dispatch verification
-  const dispatchableOrders = orders.filter(
-    (o) => o.status === "processing" || o.status === "ready_for_dispatch"
-  );
+export default async function DispatchPage() {
+  await requireAdmin();
+  const orders = await db.order.findMany({
+    where: { status: { in: ["confirmed", "processing", "ready_for_dispatch"] } },
+    include: { items: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const toPack = orders.filter((o) => o.status !== "ready_for_dispatch");
+  const ready = orders.filter((o) => o.status === "ready_for_dispatch");
+
+  const card = (o: (typeof orders)[number]) => {
+    const units = o.items.reduce((a, i) => a + i.quantity, 0);
+    const scanned = o.items.reduce((a, i) => a + i.scannedQty, 0);
+    return (
+      <Link
+        key={o.id}
+        href={o.status === "ready_for_dispatch" ? `/admin/orders/${o.id}` : `/admin/dispatch/${o.id}`}
+        className="block bg-asur-carbon border border-asur-graphite hover:border-asur-iron p-4 transition-colors"
+      >
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-body-sm text-asur-white">{formatOrderNumber(o.number)}</span>
+          <OrderStatusPill status={o.status} label={ORDER_STATUS_LABEL[o.status as OrderStatusValue]} />
+        </div>
+        <p className="mt-2 text-body-sm text-asur-silver">{o.shipName} · {o.shipCity}</p>
+        <div className="mt-3 h-1 bg-asur-graphite">
+          <div className="h-full bg-accent-primary" style={{ width: `${units ? (scanned / units) * 100 : 0}%` }} />
+        </div>
+        <p className="mt-1.5 flex justify-between text-caption text-asur-slate">
+          <span>{scanned}/{units} scanned</span>
+          <span>{formatPrice(o.total)} COD</span>
+        </p>
+      </Link>
+    );
+  };
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-display-sm font-bold text-asur-white">
-          Dispatch Verification
-        </h1>
-        <p className="text-body-md text-asur-silver mt-1">
-          Scan and verify order items before dispatch
-        </p>
-      </div>
-
-      {/* Quick Scan */}
-      <div className="mb-8 bg-asur-carbon border border-asur-graphite p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 bg-accent-primary/20 flex items-center justify-center">
-            <ScanLine size={16} className="text-accent-primary" />
-          </div>
-          <div>
-            <h2 className="text-heading-sm font-medium text-asur-white">
-              Quick Order Scan
-            </h2>
-            <p className="text-caption text-asur-slate">
-              Enter an order number to start dispatch verification
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <input
-            type="text"
-            placeholder="Enter order number (e.g. AS10294)"
-            className="flex-1 max-w-sm bg-asur-graphite border border-asur-iron px-4 py-3 text-body-md text-asur-white placeholder:text-asur-slate focus:outline-none focus:border-accent-primary font-mono"
-          />
-          <Button>Start Verification</Button>
-        </div>
-      </div>
-
-      {/* Orders Ready for Dispatch */}
-      <div className="bg-asur-carbon border border-asur-graphite overflow-hidden">
-        <div className="px-5 py-4 border-b border-asur-graphite">
-          <h2 className="text-heading-sm font-medium text-asur-white">
-            Orders Awaiting Dispatch ({dispatchableOrders.length})
-          </h2>
-        </div>
-        <div className="divide-y divide-asur-graphite/50">
-          {dispatchableOrders.map((order) => (
-            <div
-              key={order.id}
-              className="flex items-center justify-between px-5 py-4 hover:bg-asur-steel/10 transition-colors"
-            >
-              <div className="flex items-center gap-4">
-                <div>
-                  <p className="text-body-sm font-medium text-asur-white">
-                    #{order.orderNumber}
-                  </p>
-                  <p className="text-caption text-asur-slate">
-                    {order.customer.firstName} {order.customer.lastName} •{" "}
-                    {order.items.reduce((acc, item) => acc + item.quantity, 0)} items
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <OrderStatusBadge status={order.status} />
-                <span className="text-body-sm text-asur-silver font-medium">
-                  {formatPrice(order.total)}
-                </span>
-                <Link href={`/admin/dispatch/${order.id}`}>
-                  <Button variant="outline" size="sm">
-                    <span className="flex items-center gap-2">
-                      Verify
-                      <ArrowRight size={12} />
-                    </span>
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          ))}
-          {dispatchableOrders.length === 0 && (
-            <div className="px-5 py-10 text-center">
-              <p className="text-body-md text-asur-silver">
-                No orders pending dispatch verification
-              </p>
-            </div>
+      <PageHeader title="Dispatch" subtitle="Scan every item before it leaves — wrong items are blocked." />
+      <div className="grid lg:grid-cols-2 gap-8">
+        <section>
+          <h2 className="flex items-center gap-2 text-body-md font-medium text-asur-white mb-4"><ScanLine size={16} className="text-accent-primary" /> To pack ({toPack.length})</h2>
+          {toPack.length ? <div className="space-y-3">{toPack.map(card)}</div> : (
+            <div className="bg-asur-carbon border border-asur-graphite"><EmptyState icon={<PackageCheck size={32} />} title="Nothing to pack">Confirm orders to add them to this queue.</EmptyState></div>
           )}
-        </div>
+        </section>
+        <section>
+          <h2 className="flex items-center gap-2 text-body-md font-medium text-asur-white mb-4"><Truck size={16} className="text-accent-primary" /> Packed, awaiting pickup ({ready.length})</h2>
+          {ready.length ? <div className="space-y-3">{ready.map(card)}</div> : (
+            <div className="bg-asur-carbon border border-asur-graphite"><EmptyState icon={<Truck size={32} />} title="Nothing waiting for pickup" /></div>
+          )}
+        </section>
       </div>
     </div>
   );

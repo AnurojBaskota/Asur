@@ -1,214 +1,133 @@
-"use client";
-
-import { dashboardMetrics, orders, products, formatPrice } from "@/lib/data";
-import { OrderStatusBadge, PaymentStatusBadge } from "@/components/ui/Badge";
-import {
-  TrendingUp,
-  ShoppingCart,
-  Clock,
-  Truck,
-  AlertTriangle,
-  DollarSign,
-  Package,
-  ArrowUpRight,
-} from "lucide-react";
 import Link from "next/link";
+import { AlertTriangle, ArrowUpRight, Banknote, Clock, PackageCheck, ShoppingCart, Truck, Warehouse } from "lucide-react";
+import { db } from "@/lib/server/db";
+import { requireAdmin } from "@/lib/server/session";
+import { formatPrice } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { ORDER_STATUS_LABEL, formatOrderNumber, type OrderStatusValue } from "@/lib/settings";
+import { EmptyState, OrderStatusPill, PageHeader, Panel } from "@/components/admin/ui";
 
-export default function AdminDashboard() {
-  const metrics = dashboardMetrics;
+const COUNTED = { notIn: ["cancelled", "returned"] };
 
-  const metricCards = [
-    {
-      label: "Revenue This Month",
-      value: formatPrice(metrics.revenueThisMonth),
-      change: `+${metrics.revenueChange}%`,
-      icon: DollarSign,
-      color: "text-status-success",
-    },
-    {
-      label: "Today's Orders",
-      value: metrics.todaysOrders.toString(),
-      sub: formatPrice(metrics.revenueToday) + " revenue",
-      icon: ShoppingCart,
-      color: "text-status-info",
-    },
-    {
-      label: "Pending Orders",
-      value: metrics.pendingOrders.toString(),
-      sub: "Awaiting processing",
-      icon: Clock,
-      color: "text-status-warning",
-    },
-    {
-      label: "Ready for Dispatch",
-      value: metrics.readyForDispatch.toString(),
-      sub: "Verified & packed",
-      icon: Truck,
-      color: "text-accent-primary",
-    },
-    {
-      label: "Low Stock Items",
-      value: metrics.lowStockProducts.toString(),
-      sub: "Need restocking",
-      icon: AlertTriangle,
-      color: "text-status-error",
-    },
-    {
-      label: "Inventory Value",
-      value: formatPrice(metrics.inventoryValue),
-      sub: `${products.reduce((acc, p) => acc + p.variants.length, 0)} variants`,
-      icon: Package,
-      color: "text-asur-silver",
-    },
+export default async function AdminDashboard() {
+  await requireAdmin();
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days30 = new Date(now.getTime() - 30 * 86_400_000);
+  const days60 = new Date(now.getTime() - 60 * 86_400_000);
+
+  const [today, last30, prev30, statusCounts, recent, variants, topItems] = await Promise.all([
+    db.order.aggregate({ where: { createdAt: { gte: startOfToday }, status: COUNTED }, _sum: { total: true }, _count: true }),
+    db.order.aggregate({ where: { createdAt: { gte: days30 }, status: COUNTED }, _sum: { total: true }, _count: true }),
+    db.order.aggregate({ where: { createdAt: { gte: days60, lt: days30 }, status: COUNTED }, _sum: { total: true } }),
+    db.order.groupBy({ by: ["status"], _count: true }),
+    db.order.findMany({ orderBy: { createdAt: "desc" }, take: 8 }),
+    db.variant.findMany({ include: { product: { select: { name: true, id: true } } } }),
+    db.orderItem.groupBy({
+      by: ["productName"],
+      where: { order: { createdAt: { gte: days30 }, status: COUNTED } },
+      _sum: { quantity: true, total: true },
+      orderBy: { _sum: { quantity: "desc" } },
+      take: 5,
+    }),
+  ]);
+
+  const count = (s: string) => statusCounts.find((c) => c.status === s)?._count ?? 0;
+  const revenue30 = last30._sum.total ?? 0;
+  const prevRevenue = prev30._sum.total ?? 0;
+  const change = prevRevenue ? Math.round(((revenue30 - prevRevenue) / prevRevenue) * 100) : null;
+  const low = variants.filter((v) => v.stock <= v.lowStockThreshold).sort((a, b) => a.stock - b.stock);
+  const stockValue = variants.reduce((a, v) => a + v.stock * v.costPrice, 0);
+  const aov = last30._count ? Math.round(revenue30 / last30._count) : 0;
+
+  const metrics = [
+    { label: "Revenue · 30 days", value: formatPrice(revenue30), sub: change === null ? "No previous period" : `${change >= 0 ? "+" : ""}${change}% vs previous 30 days`, icon: Banknote, tone: change !== null && change < 0 ? "text-status-error" : "text-status-success" },
+    { label: "Orders today", value: String(today._count), sub: `${formatPrice(today._sum.total ?? 0)} revenue`, icon: ShoppingCart, tone: "text-status-info" },
+    { label: "Awaiting confirmation", value: String(count("pending")), sub: "Call to confirm", icon: Clock, tone: "text-status-warning", href: "/admin/orders?status=pending" },
+    { label: "To pack", value: String(count("confirmed") + count("processing")), sub: `${count("ready_for_dispatch")} packed, awaiting pickup`, icon: PackageCheck, tone: "text-accent-primary", href: "/admin/dispatch" },
+    { label: "Out for delivery", value: String(count("dispatched")), sub: `${count("delivered")} delivered all-time`, icon: Truck, tone: "text-accent-primary", href: "/admin/orders?status=dispatched" },
+    { label: "Stock value", value: formatPrice(stockValue), sub: `${low.length} variants low or sold out`, icon: Warehouse, tone: low.length ? "text-status-warning" : "text-status-success", href: "/admin/inventory?filter=low" },
   ];
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-display-sm font-bold text-asur-white">Dashboard</h1>
-        <p className="text-body-md text-asur-silver mt-1">
-          Overview of your store performance
-        </p>
-      </div>
+      <PageHeader title="Dashboard" subtitle={`${now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })} · Avg. order ${formatPrice(aov)}`} />
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {metricCards.map((metric) => {
-          const Icon = metric.icon;
-          return (
-            <div
-              key={metric.label}
-              className="bg-asur-carbon border border-asur-graphite p-5"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-caption text-asur-slate uppercase tracking-wider">
-                    {metric.label}
-                  </p>
-                  <p className="text-heading-lg font-bold text-asur-white mt-1">
-                    {metric.value}
-                  </p>
-                  {metric.change && (
-                    <p className="text-caption text-status-success mt-1 flex items-center gap-1">
-                      <TrendingUp size={12} />
-                      {metric.change} from last month
-                    </p>
-                  )}
-                  {metric.sub && !metric.change && (
-                    <p className="text-caption text-asur-slate mt-1">{metric.sub}</p>
-                  )}
-                </div>
-                <div className={`p-2 bg-asur-steel/50 ${metric.color}`}>
-                  <Icon size={18} />
-                </div>
+      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
+        {metrics.map((m) => {
+          const Icon = m.icon;
+          const body = (
+            <div className={cn("h-full bg-asur-carbon border border-asur-graphite p-5 transition-colors", m.href && "hover:border-asur-iron")}>
+              <div className="flex items-center justify-between">
+                <p className="text-caption text-asur-slate uppercase tracking-wider">{m.label}</p>
+                <Icon size={16} className={m.tone} />
               </div>
+              <p className="mt-3 text-heading-lg font-bold text-asur-white">{m.value}</p>
+              <p className={cn("mt-1 text-caption", m.tone)}>{m.sub}</p>
             </div>
           );
+          return m.href ? <Link key={m.label} href={m.href}>{body}</Link> : <div key={m.label}>{body}</div>;
         })}
       </div>
 
-      {/* Recent Orders & Best Sellers */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Recent Orders */}
-        <div className="lg:col-span-2 bg-asur-carbon border border-asur-graphite">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-asur-graphite">
-            <h2 className="text-heading-sm font-medium text-asur-white">
-              Recent Orders
-            </h2>
-            <Link
-              href="/admin/orders"
-              className="text-caption text-asur-silver hover:text-accent-primary transition-colors uppercase tracking-wider flex items-center gap-1"
-            >
-              View All <ArrowUpRight size={12} />
-            </Link>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-asur-graphite">
-                  <th className="text-left px-5 py-3 text-caption text-asur-slate uppercase tracking-wider font-medium">
-                    Order
-                  </th>
-                  <th className="text-left px-5 py-3 text-caption text-asur-slate uppercase tracking-wider font-medium">
-                    Customer
-                  </th>
-                  <th className="text-left px-5 py-3 text-caption text-asur-slate uppercase tracking-wider font-medium">
-                    Status
-                  </th>
-                  <th className="text-left px-5 py-3 text-caption text-asur-slate uppercase tracking-wider font-medium">
-                    Payment
-                  </th>
-                  <th className="text-right px-5 py-3 text-caption text-asur-slate uppercase tracking-wider font-medium">
-                    Total
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="border-b border-asur-graphite/50 hover:bg-asur-steel/20 transition-colors"
-                  >
-                    <td className="px-5 py-3">
-                      <Link
-                        href={`/admin/orders/${order.id}`}
-                        className="text-body-sm text-asur-white hover:text-accent-primary font-medium"
-                      >
-                        #{order.orderNumber}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-3 text-body-sm text-asur-silver">
-                      {order.customer.firstName} {order.customer.lastName}
-                    </td>
-                    <td className="px-5 py-3">
-                      <OrderStatusBadge status={order.status} />
-                    </td>
-                    <td className="px-5 py-3">
-                      <PaymentStatusBadge status={order.paymentStatus} />
-                    </td>
-                    <td className="px-5 py-3 text-body-sm text-asur-white text-right font-medium">
-                      {formatPrice(order.total)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Best Sellers */}
-        <div className="bg-asur-carbon border border-asur-graphite">
-          <div className="px-5 py-4 border-b border-asur-graphite">
-            <h2 className="text-heading-sm font-medium text-asur-white">
-              Best Sellers
-            </h2>
-          </div>
-          <div className="p-4 space-y-3">
-            {products
-              .filter((p) => p.tags.includes("bestseller"))
-              .map((product, idx) => (
-                <div
-                  key={product.id}
-                  className="flex items-center gap-3 py-2"
-                >
-                  <span className="w-6 h-6 flex items-center justify-center text-caption text-asur-slate bg-asur-steel/50">
-                    {idx + 1}
-                  </span>
-                  <div className="w-10 h-12 bg-asur-graphite flex-shrink-0 flex items-center justify-center">
-                    <span className="text-[8px] text-asur-slate">A</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-body-sm text-asur-white truncate">
-                      {product.name}
-                    </p>
-                    <p className="text-caption text-asur-slate">
-                      {formatPrice(product.variants[0].price)}
-                    </p>
-                  </div>
-                </div>
+      <div className="grid xl:grid-cols-3 gap-6">
+        <Panel
+          title="Recent orders"
+          className="xl:col-span-2"
+          action={<Link href="/admin/orders" className="flex items-center gap-1 text-caption text-asur-silver hover:text-asur-white">View all <ArrowUpRight size={12} /></Link>}
+        >
+          {recent.length === 0 ? (
+            <EmptyState icon={<ShoppingCart size={32} />} title="No orders yet">Orders from the storefront show up here instantly.</EmptyState>
+          ) : (
+            <ul className="-my-3 divide-y divide-asur-graphite">
+              {recent.map((o) => (
+                <li key={o.id}>
+                  <Link href={`/admin/orders/${o.id}`} className="flex items-center gap-4 py-3 hover:bg-asur-steel/10 -mx-2 px-2">
+                    <span className="font-mono text-body-sm text-asur-white w-20">{formatOrderNumber(o.number)}</span>
+                    <span className="flex-1 min-w-0 truncate text-body-sm text-asur-silver">{o.shipName} · {o.shipCity}</span>
+                    <span className="text-body-sm text-asur-white">{formatPrice(o.total)}</span>
+                    <OrderStatusPill status={o.status} label={ORDER_STATUS_LABEL[o.status as OrderStatusValue]} />
+                  </Link>
+                </li>
               ))}
-          </div>
+            </ul>
+          )}
+        </Panel>
+
+        <div className="space-y-6">
+          <Panel title="Best sellers · 30 days">
+            {topItems.length === 0 ? (
+              <p className="text-body-sm text-asur-slate">No sales yet.</p>
+            ) : (
+              <ol className="space-y-3">
+                {topItems.map((t, i) => (
+                  <li key={t.productName} className="flex items-center gap-3 text-body-sm">
+                    <span className="font-mono text-caption text-asur-slate w-4">{i + 1}</span>
+                    <span className="flex-1 truncate text-asur-white">{t.productName}</span>
+                    <span className="text-asur-silver">{t._sum.quantity} sold</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Panel>
+
+          <Panel
+            title={<span className="flex items-center gap-2"><AlertTriangle size={15} className="text-status-warning" /> Low stock</span>}
+            action={<Link href="/admin/inventory?filter=low" className="text-caption text-asur-silver hover:text-asur-white">Restock</Link>}
+          >
+            {low.length === 0 ? (
+              <p className="text-body-sm text-asur-slate">Everything is well stocked.</p>
+            ) : (
+              <ul className="space-y-2">
+                {low.slice(0, 6).map((v) => (
+                  <li key={v.id} className="flex items-center justify-between gap-3 text-body-sm">
+                    <span className="truncate text-asur-silver">{v.product.name} <span className="text-asur-slate">· {v.colorName} / {v.size}</span></span>
+                    <span className={cn("font-semibold tabular-nums", v.stock <= 0 ? "text-status-error" : "text-status-warning")}>{v.stock}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
         </div>
       </div>
     </div>

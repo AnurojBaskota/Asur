@@ -11,6 +11,8 @@ import { SmartImage } from "@/components/ui/SmartImage";
 import { slugify } from "@/lib/barcode";
 import { deleteCategory, saveCategory } from "@/app/admin/actions";
 import { ImageUploader } from "./ImageUploader";
+import { SizeChartEditor } from "./SizeChartEditor";
+import type { SizeChart } from "@/lib/settings";
 import { EmptyState, Label, PageHeader, fieldClass } from "./ui";
 
 type Category = {
@@ -21,9 +23,10 @@ type Category = {
   image: string;
   sortOrder: number;
   productCount: number;
+  sizeChart: SizeChart | null;
 };
 
-const blank = { id: "", name: "", slug: "", description: "", image: "", sortOrder: 0, productCount: 0 };
+const blank: Category = { id: "", name: "", slug: "", description: "", image: "", sortOrder: 0, productCount: 0, sizeChart: null };
 
 export function CategoryManager({ categories }: { categories: Category[] }) {
   const router = useRouter();
@@ -46,6 +49,7 @@ export function CategoryManager({ categories }: { categories: Category[] }) {
         description: editing.description,
         image: editing.image,
         sortOrder: editing.sortOrder,
+        sizeChart: editing.sizeChart,
       });
       if (!res.ok) return void toast.error(res.error);
       toast.success(editing.id ? "Category updated" : "Category created");
@@ -117,7 +121,7 @@ export function CategoryManager({ categories }: { categories: Category[] }) {
       {editing && (
         <div className="fixed inset-0 z-[60] flex justify-end">
           <div className="absolute inset-0 bg-black/60" onClick={() => !pending && setEditing(null)} />
-          <div className="relative w-full max-w-md h-full bg-asur-carbon border-l border-asur-graphite flex flex-col">
+          <div className="relative w-full max-w-xl h-full bg-asur-carbon border-l border-asur-graphite flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-asur-graphite">
               <h2 className="text-body-md font-medium text-asur-white">{editing.id ? "Edit category" : "New category"}</h2>
               <button onClick={() => setEditing(null)} className="p-1.5 text-asur-silver hover:text-asur-white" aria-label="Close"><X size={18} /></button>
@@ -177,6 +181,10 @@ export function CategoryManager({ categories }: { categories: Category[] }) {
                   images={editing.image ? [{ url: editing.image, alt: editing.name }] : []}
                   onChange={(imgs) => setEditing({ ...editing, image: imgs[0]?.url ?? "" })}
                 />
+              </div>
+              <div>
+                <Label hint="Shown as “Size guide” on product pages">Size chart</Label>
+                <SizeChartEditor value={editing.sizeChart} onChange={(sizeChart) => setEditing({ ...editing, sizeChart })} />
               </div>
             </form>
             <div className="flex gap-2 px-5 py-4 border-t border-asur-graphite">

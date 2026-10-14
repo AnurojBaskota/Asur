@@ -144,7 +144,7 @@ html {
   body {
     background: #fff !important;
   }
-  body * {
+  body:has(#label-sheet) * {
     visibility: hidden;
   }
   #label-sheet,

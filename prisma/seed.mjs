@@ -2,6 +2,11 @@
 // Run with: npm run db:seed   (wipes catalog tables first)
 import { PrismaClient } from "@prisma/client";
 
+if (process.env.NODE_ENV === "production" && process.env.ALLOW_SEED !== "1") {
+  console.error("Refusing to seed in production: it wipes the catalogue. Set ALLOW_SEED=1 to override.");
+  process.exit(1);
+}
+
 const db = new PrismaClient();
 
 const img = (id) =>
@@ -21,6 +26,17 @@ const categories = [
     description: "Heavyweight cotton, dropped shoulders, boxy cut. Built to hold shape set after set.",
     image: img("1741346075329-5e386cd8d463"),
     sortOrder: 0,
+    sizeChart: JSON.stringify({
+      columns: ["Size", "Chest (cm)", "Length (cm)", "Shoulder (cm)"],
+      rows: [
+        ["S", "104", "72", "50"],
+        ["M", "110", "74", "52"],
+        ["L", "116", "76", "54"],
+        ["XL", "122", "78", "56"],
+        ["XXL", "128", "80", "58"],
+      ],
+      note: "Garment measurements in centimetres, measured flat. Compare against a tee you already own.",
+    }),
   },
   {
     name: "Sleeveless",
@@ -191,8 +207,75 @@ async function main() {
     }
   }
 
-  const [c, pr, v] = await Promise.all([db.category.count(), db.product.count(), db.variant.count()]);
-  console.log(`Seeded ${c} categories, ${pr} products, ${v} variants.`);
+  // Starter content pages — only created if missing, never overwritten.
+  const pages = [
+    {
+      slug: "shipping",
+      title: "Shipping",
+      sortOrder: 0,
+      published: true,
+      body: `We deliver across Nepal.
+
+## Delivery fees
+- Free standard shipping on orders above Rs. 5,000
+- Rs. 150 on orders below Rs. 5,000
+
+## Delivery time
+Orders are delivered in 3–5 business days. Our rider will call the phone number on your order before delivery.
+
+## Payment
+Pay in cash when your order arrives.`,
+    },
+    {
+      slug: "returns",
+      title: "Returns & exchanges",
+      sortOrder: 1,
+      published: true,
+      body: `Not the right fit? You can return or exchange within 7 days of delivery.
+
+## Conditions
+- Items must be unworn, unwashed and with tags attached
+- Sale items can be exchanged for a different size
+
+## How to start a return
+Contact us with your order number and we'll arrange a pickup.`,
+    },
+    {
+      slug: "contact",
+      title: "Contact us",
+      sortOrder: 2,
+      published: true,
+      body: `Questions about sizing, an order or a return? Get in touch and we'll get back to you within one business day.
+
+Add your email, phone and social links in Admin → Store settings → Brand & contact.`,
+    },
+    {
+      slug: "privacy",
+      title: "Privacy policy",
+      sortOrder: 3,
+      published: false,
+      body: `DRAFT — review with a legal advisor before publishing.
+
+## What we collect
+Your name, email, phone number and delivery address when you place an order.
+
+## How we use it
+Only to process and deliver your order and to contact you about it.`,
+    },
+    {
+      slug: "terms",
+      title: "Terms of service",
+      sortOrder: 4,
+      published: false,
+      body: `DRAFT — review with a legal advisor before publishing.`,
+    },
+  ];
+  for (const page of pages) {
+    await db.page.upsert({ where: { slug: page.slug }, update: {}, create: page });
+  }
+
+  const [c, pr, v, pg] = await Promise.all([db.category.count(), db.product.count(), db.variant.count(), db.page.count()]);
+  console.log(`Seeded ${c} categories, ${pr} products, ${v} variants, ${pg} pages.`);
 }
 
 main()

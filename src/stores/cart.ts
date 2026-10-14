@@ -15,6 +15,11 @@ interface CartStore {
   openCart: () => void;
   closeCart: () => void;
 
+  /** Apply fresh price/stock from the server. Returns human-readable changes. */
+  syncWithServer: (
+    lines: { variantId: string; available: boolean; stock: number; price: number; salePrice: number | null }[]
+  ) => string[];
+
   // Computed
   getSubtotal: () => number;
   getItemCount: () => number;
@@ -68,6 +73,32 @@ export const useCartStore = create<CartStore>()(
             item.variantId === variantId ? { ...item, quantity } : item
           ),
         });
+      },
+
+      syncWithServer: (lines) => {
+        const changes: string[] = [];
+        const next: CartItem[] = [];
+        for (const item of get().items) {
+          const line = lines.find((l) => l.variantId === item.variantId);
+          if (!line) { next.push(item); continue; }
+          const label = `${item.product.name} (${item.variant.size})`;
+          if (!line.available || line.stock <= 0) {
+            changes.push(`${label} is sold out and was removed from your bag.`);
+            continue;
+          }
+          const quantity = Math.min(item.quantity, line.stock);
+          if (quantity < item.quantity) changes.push(`Only ${line.stock} of ${label} left — quantity updated.`);
+          const oldUnit = item.variant.salePrice || item.variant.price;
+          const newUnit = line.salePrice || line.price;
+          if (oldUnit !== newUnit) changes.push(`The price of ${label} changed.`);
+          next.push({
+            ...item,
+            quantity,
+            variant: { ...item.variant, price: line.price, salePrice: line.salePrice ?? undefined, stockQuantity: line.stock },
+          });
+        }
+        set({ items: next });
+        return changes;
       },
 
       clearCart: () => set({ items: [] }),

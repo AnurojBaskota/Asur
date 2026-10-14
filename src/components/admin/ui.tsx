@@ -87,3 +87,28 @@ export function EmptyState({ icon, title, children }: { icon: React.ReactNode; t
     </div>
   );
 }
+
+const ORDER_TONE: Record<string, string> = {
+  pending: "bg-status-warning/15 text-status-warning border-status-warning/25",
+  confirmed: "bg-status-info/15 text-status-info border-status-info/25",
+  processing: "bg-status-info/15 text-status-info border-status-info/25",
+  ready_for_dispatch: "bg-accent-primary/15 text-accent-primary border-accent-primary/30",
+  dispatched: "bg-accent-primary/15 text-accent-primary border-accent-primary/30",
+  delivered: "bg-status-success/15 text-status-success border-status-success/25",
+  cancelled: "bg-status-error/15 text-status-error border-status-error/25",
+  returned: "bg-asur-iron/40 text-asur-silver border-asur-iron",
+};
+
+export function OrderStatusPill({ status, label }: { status: string; label: string }) {
+  return (
+    <span className={cn("inline-flex px-2 py-0.5 text-caption font-medium border rounded-sm whitespace-nowrap", ORDER_TONE[status] ?? ORDER_TONE.returned)}>
+      {label}
+    </span>
+  );
+}
+
+export function PaymentPill({ status }: { status: string }) {
+  const cls =
+    status === "paid" ? "text-status-success" : status === "refunded" ? "text-asur-silver" : "text-status-warning";
+  return <span className={cn("text-caption font-medium capitalize", cls)}>{status === "pending" ? "Unpaid" : status}</span>;
+}
