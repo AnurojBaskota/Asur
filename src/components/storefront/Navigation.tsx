@@ -90,13 +90,13 @@ export function Navigation({ categories, announcements }: { categories: { name: 
               >
                 {menuOpen ? <X size={22} /> : <Menu size={22} />}
               </button>
-              <ul className="hidden lg:flex items-center gap-8">
+              <ul className="hidden lg:flex items-center gap-5 xl:gap-8">
                 {links.map((l) => (
                   <li key={l.href}>
                     <Link
                       href={l.href}
                       className={cn(
-                        "relative text-[13px] font-medium uppercase tracking-[0.12em] text-asur-white/80 hover:text-asur-white transition-colors",
+                        "relative whitespace-nowrap text-[13px] font-medium uppercase tracking-[0.12em] text-asur-white/80 hover:text-asur-white transition-colors",
                         "after:absolute after:-bottom-1.5 after:left-0 after:h-px after:w-full after:origin-left after:scale-x-0 after:bg-asur-white after:transition-transform hover:after:scale-x-100",
                         isActive(l.href) && "text-asur-white after:scale-x-100"
                       )}
