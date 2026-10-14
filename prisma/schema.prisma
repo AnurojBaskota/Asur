@@ -6,9 +6,13 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Supabase Postgres.
+//   DATABASE_URL – pooled connection (pgbouncer, port 6543) used by the app at runtime
+//   DIRECT_URL   – direct connection (port 5432) used by `prisma migrate`
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Category {
@@ -113,7 +117,7 @@ model Customer {
 
 model Order {
   id            String       @id @default(cuid())
-  number        Int          @unique // shown as AS-10001
+  number        Int          @unique @default(autoincrement()) // shown as AS-10001 (sequence starts at 10001)
   publicToken   String       @unique // lets the customer view their confirmation page
   customerId    String
   customer      Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)

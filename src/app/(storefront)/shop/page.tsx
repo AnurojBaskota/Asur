@@ -14,7 +14,11 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
   const where: Prisma.ProductWhereInput = {};
   if (filter === "new") where.isNew = true;
   if (filter === "sale") where.variants = { some: { salePrice: { not: null } } };
-  if (query) where.OR = [{ name: { contains: query } }, { description: { contains: query } }, { tags: { contains: query.toLowerCase() } }];
+  if (query) where.OR = [
+    { name: { contains: query, mode: "insensitive" } },
+    { description: { contains: query, mode: "insensitive" } },
+    { tags: { contains: query, mode: "insensitive" } },
+  ];
 
   const [products, categories] = await Promise.all([getActiveProducts(where), getCategoriesWithCounts()]);
 

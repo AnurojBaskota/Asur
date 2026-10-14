@@ -4,7 +4,10 @@
     {
       "name": "asur-dev",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "source ~/.nvm/nvm.sh && nvm use >/dev/null && npm run dev"],
+      "runtimeArgs": [
+        "-c",
+        "source ~/.nvm/nvm.sh && nvm use >/dev/null && npm run dev"
+      ],
       "port": 3000
     }
   ]

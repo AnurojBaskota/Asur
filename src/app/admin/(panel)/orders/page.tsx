@@ -20,9 +20,9 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
     const num = Number(q.replace(/^AS-?/i, ""));
     where.OR = [
       ...(Number.isInteger(num) && num > 0 ? [{ number: num }] : []),
-      { shipName: { contains: q } },
+      { shipName: { contains: q, mode: "insensitive" } },
       { shipPhone: { contains: q } },
-      { customer: { email: { contains: q.toLowerCase() } } },
+      { customer: { email: { contains: q, mode: "insensitive" } } },
     ];
   }
 

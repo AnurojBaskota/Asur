@@ -93,26 +93,6 @@ export async function placeOrder(input: CheckoutInput): Promise<CheckoutResult> 
 
       const subtotal = items.reduce((a, i) => a + i.total, 0);
       const shippingFee = shippingFor(subtotal, settings.shipping);
-      const last = await tx.order.findFirst({ orderBy: { number: "desc" }, select: { number: true } });
-      const number = (last?.number ?? 10000) + 1;
-
-      // Conditional decrement guards against two checkouts racing for the last unit.
-      for (const i of items) {
-        const res = await tx.variant.updateMany({
-          where: { id: i.v.id, stock: { gte: i.quantity } },
-          data: { stock: { decrement: i.quantity } },
-        });
-        if (res.count !== 1) throw new CheckoutError(`${i.v.product.name} (${i.v.size}) just sold out.`);
-        await tx.stockMovement.create({
-          data: {
-            variantId: i.v.id,
-            change: -i.quantity,
-            balance: i.v.stock - i.quantity,
-            type: "sale",
-            note: `Order ${formatOrderNumber(number)}`,
-          },
-        });
-      }
 
       const customer = await tx.customer.upsert({
         where: { email },
@@ -120,9 +100,8 @@ export async function placeOrder(input: CheckoutInput): Promise<CheckoutResult> 
         create: { email, name, phone },
       });
 
-      return tx.order.create({
+      const order = await tx.order.create({
         data: {
-          number,
           publicToken: randomBytes(18).toString("base64url"),
           customerId: customer.id,
           paymentMethod: "cod",
@@ -153,7 +132,28 @@ export async function placeOrder(input: CheckoutInput): Promise<CheckoutResult> 
           events: { create: { type: "created", message: "Order placed — Cash on Delivery" } },
         },
       });
-    });
+
+      // Conditional decrement guards against two checkouts racing for the last unit
+      // (the row lock makes the second one see the reduced stock and fail).
+      for (const i of items) {
+        const res = await tx.variant.updateMany({
+          where: { id: i.v.id, stock: { gte: i.quantity } },
+          data: { stock: { decrement: i.quantity } },
+        });
+        if (res.count !== 1) throw new CheckoutError(`${i.v.product.name} (${i.v.size}) just sold out.`);
+        const fresh = await tx.variant.findUniqueOrThrow({ where: { id: i.v.id }, select: { stock: true } });
+        await tx.stockMovement.create({
+          data: {
+            variantId: i.v.id,
+            change: -i.quantity,
+            balance: fresh.stock,
+            type: "sale",
+            note: `Order ${formatOrderNumber(order.number)}`,
+          },
+        });
+      }
+      return order;
+    }, { timeout: 20_000, maxWait: 10_000 });
 
     revalidatePath("/", "layout");
     return { ok: true, token: order.publicToken, number: formatOrderNumber(order.number) };

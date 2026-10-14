@@ -1,19 +1,39 @@
 # ASUR — storefront + admin
 
-Next.js 16 storefront for ASUR gym apparel, with an admin portal for managing the catalogue and stock. Data lives in SQLite via Prisma.
+Next.js 16 storefront for ASUR gym apparel, with an admin portal for managing the catalogue and stock. Data lives in Supabase Postgres via Prisma; images in Supabase Storage.
 
-## Setup
+## Setup (Supabase)
+
+The app uses **Supabase Postgres** (via Prisma) for all data and **Supabase Storage** for uploaded images. Requires Node 20+ (`nvm use` reads `.nvmrc`).
+
+1. **Create a Supabase project** at supabase.com.
+2. **Database URLs** — Dashboard → **Connect** → **ORMs → Prisma**. Copy both into `.env`:
+   - `DATABASE_URL` — the pooled URL (port **6543**), keep `?pgbouncer=true&connection_limit=1`
+   - `DIRECT_URL` — the direct/session URL (port **5432**), used only for migrations
+3. **Storage** — Dashboard → **Storage** → **New bucket** named `media`, set it to **Public**.
+   Then Settings → **API Keys** → copy the **secret** key into `SUPABASE_SECRET_KEY`, and the project URL into `SUPABASE_URL`.
+   *(Leave these empty in local dev to save uploads to `./storage/uploads` instead.)*
+4. **Admin login** — set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `SESSION_SECRET` (`openssl rand -hex 32`).
+5. Install, migrate, seed, run:
 
 ```bash
+nvm use
 npm install
-cp .env.example .env        # then set ADMIN_PASSWORD and SESSION_SECRET (openssl rand -hex 32)
-npm run db:migrate          # creates prisma/dev.db
-npm run db:seed             # Oversized Tees + Sleeveless sample catalogue (wipes catalogue tables)
+npm run db:deploy     # creates all tables in Supabase (+ locks down the public API with RLS)
+npm run db:seed       # sample catalogue + starter pages (dev/staging only — wipes the catalogue)
 npm run dev
 ```
 
-- Store: http://localhost:3000
-- Admin: http://localhost:3000/admin (sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD`)
+- Store: http://localhost:3000 · Admin: http://localhost:3000/admin
+
+### Security notes
+- The migration **enables Row Level Security on every table with no policies**. Supabase's auto-generated REST/GraphQL API (anon key) therefore can't read or write anything; the app talks to Postgres directly through Prisma as the database owner, which bypasses RLS. Don't add RLS policies unless you intend to expose a table publicly.
+- `SUPABASE_SECRET_KEY` and the database password are **server-only**. Never prefix them with `NEXT_PUBLIC_`.
+
+### Deploying (e.g. Vercel)
+- Add every variable from `.env.example` to the host's environment settings.
+- Run `npm run db:deploy` once per release (or as a build step) to apply new migrations.
+- Changing the schema: edit `prisma/schema.prisma`, then `npm run db:migrate -- --name <change>` against a dev/branch database, commit the generated migration, and deploy.
 
 ## Admin portal
 
@@ -28,5 +48,4 @@ Barcodes use the GS1 restricted-circulation prefix `2xx`, meant for in-store use
 
 ## Notes
 
-- Uploaded images are saved to `storage/uploads/` and served from `/media/…`. On serverless hosting (e.g. Vercel) the filesystem isn't persistent — swap `src/lib/server/storage.ts` + the upload route for S3/R2/Cloudinary, and SQLite for Postgres.
 - Orders, dispatch and the dashboard metrics still use mock data in `src/lib/data.ts`.

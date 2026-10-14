@@ -12,7 +12,7 @@ export default async function CustomersPage({ searchParams }: PageProps<"/admin/
   const q = typeof raw === "string" ? raw.trim().slice(0, 80) : "";
 
   const customers = await db.customer.findMany({
-    where: q ? { OR: [{ name: { contains: q } }, { email: { contains: q.toLowerCase() } }, { phone: { contains: q } }] } : {},
+    where: q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } }, { phone: { contains: q } }] } : {},
     include: {
       orders: { where: { status: { notIn: ["cancelled", "returned"] } }, select: { total: true, createdAt: true } },
       _count: { select: { orders: true } },
