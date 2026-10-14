@@ -1,0 +1,96 @@
+// ASUR catalog + inventory schema.
+// Prices are stored as whole rupees (Int). Stock is tracked per variant,
+// and every change is recorded in StockMovement for an audit trail.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  image       String?
+  sortOrder   Int       @default(0)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id               String         @id @default(cuid())
+  name             String
+  slug             String         @unique
+  description      String         @default("")
+  categoryId       String
+  category         Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  collection       String?
+  material         String         @default("")
+  careInstructions String         @default("")
+  fit              String         @default("Regular") // Slim | Regular | Oversized | Compression
+  weight           String?
+  gender           String         @default("Unisex") // Men | Women | Unisex
+  tags             String         @default("") // comma separated
+  featured         Boolean        @default(false)
+  isNew            Boolean        @default(false)
+  status           String         @default("draft") // draft | active | archived
+  images           ProductImage[]
+  variants         Variant[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([categoryId])
+  @@index([status])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String  @default("")
+  position  Int     @default(0) // position 0 is the cover image
+
+  @@index([productId])
+}
+
+model Variant {
+  id                String          @id @default(cuid())
+  productId         String
+  product           Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku               String          @unique
+  barcode           String          @unique // EAN-13
+  size              String
+  colorName         String
+  colorHex          String
+  price             Int
+  salePrice         Int?
+  costPrice         Int             @default(0)
+  stock             Int             @default(0)
+  lowStockThreshold Int             @default(5)
+  movements         StockMovement[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([productId, size, colorName])
+  @@index([productId])
+}
+
+model StockMovement {
+  id        String   @id @default(cuid())
+  variantId String
+  variant   Variant  @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  change    Int // +restock / -sale etc.
+  balance   Int // stock after this movement
+  type      String // initial | restock | sale | return | damage | correction
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([variantId, createdAt])
+}
