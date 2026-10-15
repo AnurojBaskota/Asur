@@ -5,7 +5,6 @@ import {
   Footer,
   Newsletter,
   ShopBanners,
-  TrustBar,
   type RailTile,
 } from "@/components/storefront/Sections";
 import { ProductRail, ProductWall } from "@/components/storefront/HomeShop";
@@ -42,7 +41,6 @@ export default async function HomePage() {
   return (
     <>
       <Hero h={settings.hero} />
-      <TrustBar shipping={settings.shipping} />
       <div id="shop" className="scroll-mt-24" />
       <CategoryRail tiles={tiles} />
       <ProductRail

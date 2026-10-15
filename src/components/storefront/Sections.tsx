@@ -1,12 +1,11 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, RotateCcw, ShieldCheck, Truck, Mountain } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { ProductCard } from "@/components/ui/ProductCard";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { NewsletterForm } from "@/components/storefront/NewsletterForm";
 import { Reveal } from "@/components/storefront/Reveal";
 import type { Product } from "@/types";
 import type { StoreSettings } from "@/lib/settings";
-import { formatPrice } from "@/lib/format";
 import { getFooterPages, getSettings } from "@/lib/server/settings";
 import { Logo } from "@/components/ui/Logo";
 
@@ -78,35 +77,6 @@ export function ValuesMarquee({ words }: { words: string[] }) {
         ))}
       </div>
     </div>
-  );
-}
-
-export function TrustBar({ shipping }: { shipping: StoreSettings["shipping"] }) {
-  const items = [
-    shipping.freeThreshold > 0
-      ? { icon: Truck, title: "Free shipping", text: `On orders above ${formatPrice(shipping.freeThreshold)}` }
-      : { icon: Truck, title: "Free shipping", text: "On every order" },
-    { icon: RotateCcw, title: `${shipping.returnDays}-day returns`, text: shipping.returnConditions },
-    { icon: ShieldCheck, title: "Built to last", text: "Heavyweight cotton, built to train in" },
-    { icon: Mountain, title: "Designed in Nepal", text: "Made for athletes everywhere" },
-  ];
-  return (
-    <section className="border-b border-asur-graphite">
-      <div className={`${container} grid grid-cols-2 lg:grid-cols-4`}>
-        {items.map(({ icon: Icon, title, text }, i) => (
-          <div
-            key={title}
-            className={`flex items-center gap-3 sm:gap-4 py-3 sm:py-5 ${i % 2 ? "pl-4 sm:pl-8" : "pr-4"} ${i > 0 ? "lg:pl-8 lg:border-l border-asur-graphite" : ""} ${i === 1 ? "border-l lg:border-l" : ""} ${i >= 2 ? "border-t lg:border-t-0" : ""}`}
-          >
-            <Icon size={20} strokeWidth={1.5} className="shrink-0 text-accent-primary" />
-            <div>
-              <p className="text-[13px] sm:text-[14px] font-medium text-asur-white">{title}</p>
-              <p className="hidden sm:block text-[12px] text-asur-slate">{text}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
   );
 }
 
