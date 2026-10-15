@@ -11,6 +11,7 @@ export default async function BarcodesPage() {
       rows={variants.map((v) => ({
         id: v.id,
         productName: v.product.name,
+        slug: v.product.slug,
         category: v.product.category.name,
         size: v.size,
         colorName: v.colorName,

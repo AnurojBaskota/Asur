@@ -9,11 +9,14 @@ export function Logo({
   tone = "light",
   className,
   priority,
+  eager,
 }: {
   height?: number;
   tone?: "light" | "dark";
   className?: string;
   priority?: boolean;
+  /** Load immediately even when off-screen (e.g. inside the print-only label sheet). */
+  eager?: boolean;
 }) {
   return (
     <Image
@@ -22,6 +25,7 @@ export function Logo({
       width={Math.round(height * RATIO)}
       height={height}
       priority={priority}
+      loading={priority ? undefined : eager ? "eager" : "lazy"}
       className={cn("h-auto select-none", className)}
       style={{ height, width: "auto" }}
     />

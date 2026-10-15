@@ -134,28 +134,32 @@ html {
   scrollbar-width: none;
 }
 
-/* Barcode label printing (admin) */
+/* Barcode label printing (admin) — only applies on the page that has #label-sheet */
 @media print {
   @page {
     size: A4;
     margin: 8mm;
   }
-  html,
-  body {
+  body:has(#label-sheet) {
     background: #fff !important;
   }
   body:has(#label-sheet) * {
     visibility: hidden;
   }
-  #label-sheet,
-  #label-sheet * {
+  /* Same specificity as the rule above (plus the id), so the labels win. */
+  body:has(#label-sheet) #label-sheet,
+  body:has(#label-sheet) #label-sheet * {
     visibility: visible;
   }
-  #label-sheet {
+  body:has(#label-sheet) #label-sheet {
+    display: grid !important;
+    grid-template-columns: repeat(4, 50mm);
+    gap: 2mm;
     position: absolute;
-    inset: 0 auto auto 0;
+    top: 0;
+    left: 0;
   }
-  #label-sheet .label {
+  body:has(#label-sheet) #label-sheet .label {
     outline: 0.2mm dashed #bbb;
   }
 }

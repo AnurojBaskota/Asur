@@ -94,7 +94,7 @@ export async function getAdminProducts() {
 export async function getInventory() {
   return db.variant.findMany({
     include: {
-      product: { select: { id: true, name: true, status: true, category: { select: { name: true } }, images: { take: 1, orderBy: { position: "asc" } } } },
+      product: { select: { id: true, name: true, slug: true, status: true, category: { select: { name: true } }, images: { take: 1, orderBy: { position: "asc" } } } },
     },
     orderBy: [{ product: { name: "asc" } }, { colorName: "asc" }, { createdAt: "asc" }],
   });

@@ -1,18 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { Printer, ScanLine, Search, Tags } from "lucide-react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { BarcodeSvg } from "./BarcodeSvg";
+import { QrSvg } from "./QrSvg";
 import { EmptyState, PageHeader, Panel, Toggle, fieldClass } from "./ui";
 import { Logo } from "@/components/ui/Logo";
 
 type Row = {
   id: string;
   productName: string;
+  slug: string;
   category: string;
   size: string;
   colorName: string;
@@ -24,11 +26,17 @@ type Row = {
 };
 
 const MAX_LABELS = 400;
+const subscribeNoop = () => () => {};
 
 export function LabelPrinter({ rows }: { rows: Row[] }) {
   const [q, setQ] = useState("");
   const [qty, setQty] = useState<Record<string, number>>({});
   const [showPrice, setShowPrice] = useState(true);
+  const [showQr, setShowQr] = useState(true);
+  const [style, setStyle] = useState<"store" | "ean">("store");
+  // QR links use the address this admin is opened on (your live domain in production).
+  // Read after hydration so server and client render the same markup.
+  const origin = useSyncExternalStore(subscribeNoop, () => window.location.origin, () => "");
   const [scan, setScan] = useState("");
   const [scanned, setScanned] = useState<Row | null | "miss">(null);
 
@@ -71,8 +79,8 @@ export function LabelPrinter({ rows }: { rows: Row[] }) {
     <div>
       <div className="print:hidden">
         <PageHeader
-          title="Barcodes & labels"
-          subtitle="Every variant gets a unique EAN-13 when it's created. Pick quantities, then print."
+          title="Print labels"
+          subtitle="Choose how many labels you need, then print. Each label has a barcode for your scanner and a QR code that opens the product on your site."
           actions={
             <Button size="sm" onClick={print} disabled={!total}>
               <span className="flex items-center gap-2"><Printer size={14} /> Print {total || ""} label{total === 1 ? "" : "s"}</span>
@@ -163,12 +171,35 @@ export function LabelPrinter({ rows }: { rows: Row[] }) {
             </Panel>
 
             <Panel title="Label preview" action={<span className="text-caption text-asur-slate">50 × 30 mm</span>}>
-              <div className="mb-4">
-                <Toggle checked={showPrice} onChange={setShowPrice} label="Print price on label" />
+              <div className="mb-5 space-y-4">
+                <Toggle checked={showPrice} onChange={setShowPrice} label="Print price" />
+                <Toggle checked={showQr} onChange={setShowQr} label="Add QR code" description="Phone cameras open this product on your website" />
+                <div>
+                  <p className="text-[14px] text-asur-white mb-2">Barcode style</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      ["store", "Store barcode", "Recommended. Works with your scanner; phone apps won't show other shops' products."],
+                      ["ean", "Retail EAN-13", "Only if a retailer asks for EAN-13."],
+                    ] as const).map(([value, label, hint]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setStyle(value)}
+                        className={cn(
+                          "text-left p-3 rounded-md border transition-colors",
+                          style === value ? "border-accent-primary bg-accent-primary/10" : "border-asur-iron hover:border-asur-silver"
+                        )}
+                      >
+                        <span className="block text-[14px] font-medium text-asur-white">{label}</span>
+                        <span className="block text-[12px] text-asur-slate mt-0.5">{hint}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
               {rows[0] ? (
                 <div className="bg-neutral-200 p-4 flex justify-center">
-                  <Label row={labels[0] ?? rows[0]} showPrice={showPrice} />
+                  <Label row={labels[0] ?? rows[0]} showPrice={showPrice} showQr={showQr} style={style} origin={origin} />
                 </div>
               ) : null}
               <p className="text-caption text-asur-slate mt-3">
@@ -181,23 +212,45 @@ export function LabelPrinter({ rows }: { rows: Row[] }) {
 
       {/* Print-only sheet */}
       <div id="label-sheet" className="hidden print:grid grid-cols-4 gap-[2mm]">
-        {labels.slice(0, MAX_LABELS).map((l) => <Label key={l.key} row={l} showPrice={showPrice} />)}
+        {labels.slice(0, MAX_LABELS).map((l) => <Label key={l.key} row={l} showPrice={showPrice} showQr={showQr} style={style} origin={origin} />)}
       </div>
     </div>
   );
 }
 
-function Label({ row, showPrice }: { row: Row; showPrice: boolean }) {
+function Label({
+  row,
+  showPrice,
+  showQr,
+  style,
+  origin,
+}: {
+  row: Row;
+  showPrice: boolean;
+  showQr: boolean;
+  style: "store" | "ean";
+  origin: string;
+}) {
   return (
     <div className="label bg-white text-black w-[50mm] h-[30mm] px-[2.5mm] py-[1.5mm] flex flex-col overflow-hidden break-inside-avoid">
-      <div className="flex items-baseline justify-between gap-1 leading-none">
-        <Logo tone="dark" height={11} className="!h-[2.6mm] w-auto" />
+      <div className="flex items-center justify-between gap-1 leading-none">
+        <Logo tone="dark" height={11} eager className="!h-[2.6mm] w-auto" />
         {showPrice && <span className="text-[7pt] font-semibold">{formatPrice(row.price)}</span>}
       </div>
       <p className="text-[6.5pt] leading-tight mt-[0.6mm] truncate">{row.productName.replace(/^ASUR\s+/i, "")}</p>
       <p className="text-[6.5pt] leading-tight font-semibold">{row.colorName} · {row.size}</p>
-      <div className="flex-1 min-h-0 flex items-end justify-center">
-        <BarcodeSvg value={row.barcode} height={28} width={1.15} fontSize={9} className="max-w-full h-auto" />
+      <div className="flex-1 min-h-0 flex items-end gap-[1.5mm]">
+        <div className="flex-1 min-w-0 flex justify-center">
+          <BarcodeSvg
+            value={row.barcode}
+            format={style === "ean" ? "EAN13" : "CODE128"}
+            height={28}
+            width={style === "ean" ? 1.15 : 1.6}
+            fontSize={9}
+            className="max-w-full h-auto"
+          />
+        </div>
+        {showQr && origin && <QrSvg value={`${origin}/product/${row.slug}`} className="block w-[12mm] h-[12mm] shrink-0 [&>svg]:w-full [&>svg]:h-full" />}
       </div>
     </div>
   );

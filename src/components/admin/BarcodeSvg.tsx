@@ -8,12 +8,15 @@ export function BarcodeSvg({
   height = 50,
   width = 1.6,
   fontSize = 13,
+  format = "auto",
   className,
 }: {
   value: string;
   height?: number;
   width?: number;
   fontSize?: number;
+  /** "auto" = EAN-13 for 13-digit codes, otherwise Code 128. */
+  format?: "auto" | "EAN13" | "CODE128";
   className?: string;
 }) {
   const ref = useRef<SVGSVGElement>(null);
@@ -22,7 +25,7 @@ export function BarcodeSvg({
     if (!ref.current) return;
     try {
       JsBarcode(ref.current, value, {
-        format: /^\d{13}$/.test(value) ? "EAN13" : "CODE128",
+        format: format === "auto" ? (/^\d{13}$/.test(value) ? "EAN13" : "CODE128") : format,
         height,
         width,
         fontSize,
@@ -34,7 +37,7 @@ export function BarcodeSvg({
     } catch {
       ref.current.innerHTML = "";
     }
-  }, [value, height, width, fontSize]);
+  }, [value, height, width, fontSize, format]);
 
   return <svg ref={ref} className={className} role="img" aria-label={`Barcode ${value}`} />;
 }
