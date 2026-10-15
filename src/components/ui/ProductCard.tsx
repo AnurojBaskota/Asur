@@ -8,6 +8,7 @@ import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cart";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { Logo } from "@/components/ui/Logo";
 
 const SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "3XL"];
 
@@ -76,7 +77,7 @@ export function ProductCard({ product, className, index, priority, bestSeller }:
             )}
           </>
         ) : (
-          <span className="absolute inset-0 flex items-center justify-center font-display condensed font-black text-3xl text-asur-iron">ASUR</span>
+          <span className="absolute inset-0 flex items-center justify-center opacity-20"><Logo height={36} /></span>
         )}
 
         {/* Top meta */}

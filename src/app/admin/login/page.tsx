@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { login } from "../actions";
+import { Logo } from "@/components/ui/Logo";
 
 export default function AdminLoginPage() {
   const [state, formAction, pending] = useActionState(login, undefined);
@@ -12,7 +13,7 @@ export default function AdminLoginPage() {
     <div className="min-h-screen bg-asur-black flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
-          <h1 className="text-heading-lg font-bold tracking-[0.2em] text-asur-white">ASUR</h1>
+          <h1 className="flex justify-center"><Logo height={56} priority /></h1>
           <p className="text-caption text-asur-slate mt-2 uppercase tracking-widest">Admin Dashboard</p>
         </div>
 

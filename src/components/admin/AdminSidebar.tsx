@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { logout } from "@/app/admin/actions";
+import { Logo } from "@/components/ui/Logo";
 
 const navigation = [
   {
@@ -91,7 +92,7 @@ export function AdminSidebar({ email }: { email: string }) {
     <>
     {/* Mobile top bar */}
     <div className="lg:hidden fixed top-0 inset-x-0 h-14 z-40 bg-asur-carbon border-b border-asur-graphite flex items-center justify-between px-4">
-      <span className="text-heading-sm font-bold tracking-[0.15em] text-asur-white">ASUR <span className="text-caption text-asur-slate font-normal tracking-wider">ADMIN</span></span>
+      <span className="flex items-center gap-2"><Logo height={24} /> <span className="text-caption text-asur-slate tracking-wider">ADMIN</span></span>
       <button onClick={() => setMobileOpen(true)} className="p-2 text-asur-silver" aria-label="Open menu"><Menu size={20} /></button>
     </div>
     {mobileOpen && <div className="lg:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setMobileOpen(false)} />}
@@ -105,9 +106,7 @@ export function AdminSidebar({ email }: { email: string }) {
       {/* Logo */}
       <div className="relative px-6 py-5 border-b border-asur-graphite">
         <Link href="/admin" className="flex items-center gap-3">
-          <span className="text-heading-md font-bold tracking-[0.15em] text-asur-white">
-            ASUR
-          </span>
+          <Logo height={28} />
           <span className="text-caption text-asur-slate uppercase tracking-wider">
             Admin
           </span>

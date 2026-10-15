@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     qualities: [75, 85],
-    localPatterns: [{ pathname: "/media/**" }],
+    localPatterns: [{ pathname: "/media/**" }, { pathname: "/brand/**" }],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       // Supabase Storage public bucket (product & content images)

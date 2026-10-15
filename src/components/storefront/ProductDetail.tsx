@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cart";
 import { ProductCard } from "@/components/ui/ProductCard";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { Logo } from "@/components/ui/Logo";
 import type { Product, ProductColor } from "@/types";
 import type { SizeChart, StoreSettings } from "@/lib/settings";
 
@@ -116,7 +117,7 @@ export function ProductDetail({
                   </div>
                 ))}
                 {product.images.length === 0 && (
-                  <div className="col-span-2 aspect-[4/5] bg-asur-graphite flex items-center justify-center font-display condensed font-black text-6xl text-asur-iron">ASUR</div>
+                  <div className="col-span-2 aspect-[4/5] bg-asur-graphite flex items-center justify-center opacity-20"><Logo height={72} /></div>
                 )}
               </div>
             </div>

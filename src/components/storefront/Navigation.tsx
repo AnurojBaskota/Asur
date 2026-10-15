@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ArrowRight, Menu, Search, ShoppingBag, X } from "lucide-react";
 import { useCartStore } from "@/stores/cart";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/ui/Logo";
 
 
 const subscribeNoop = () => () => {};
@@ -108,8 +109,8 @@ export function Navigation({ categories, announcements }: { categories: { name: 
               </ul>
             </div>
 
-            <Link href="/" className="font-display condensed font-black text-[32px] leading-none tracking-[0.08em] text-asur-white" aria-label="ASUR home">
-              ASUR
+            <Link href="/" aria-label="ASUR home" className="block">
+              <Logo height={34} priority className="h-7 sm:h-[34px] w-auto" />
             </Link>
 
             <div className="flex items-center justify-end gap-1 sm:gap-2">

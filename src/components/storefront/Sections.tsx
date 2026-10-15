@@ -8,6 +8,7 @@ import type { Product } from "@/types";
 import type { StoreSettings } from "@/lib/settings";
 import { formatPrice } from "@/lib/format";
 import { getFooterPages, getSettings } from "@/lib/server/settings";
+import { Logo } from "@/components/ui/Logo";
 
 export type CategoryTile = { name: string; slug: string; image: string | null; description?: string | null; count: number };
 
@@ -355,7 +356,7 @@ export async function Footer() {
       <div className={`${container} pt-16 sm:pt-24`}>
         <div className="grid grid-cols-2 md:grid-cols-12 gap-10">
           <div className="col-span-2 md:col-span-5">
-            <p className="font-display condensed font-black text-3xl tracking-[0.08em] text-asur-white">{brand.name}</p>
+            <Logo height={44} />
             <p className="mt-4 max-w-xs text-[14px] leading-relaxed text-asur-slate">{brand.footerText}</p>
           </div>
           {cols.map((col) => (
@@ -379,12 +380,9 @@ export async function Footer() {
           <p>Prices in NPR · Nepal</p>
         </div>
       </div>
-      <p
-        aria-hidden
-        className="select-none text-center font-display condensed font-black uppercase leading-[0.72] text-asur-graphite text-[34vw] -mb-[4vw]"
-      >
-        {brand.name}
-      </p>
+      <div aria-hidden className="mt-4 flex justify-center px-4 opacity-[0.07] translate-y-[12%]">
+        <Logo height={400} className="w-full max-w-[1400px] !h-auto" />
+      </div>
     </footer>
   );
 }

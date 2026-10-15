@@ -8,6 +8,7 @@ import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { BarcodeSvg } from "./BarcodeSvg";
 import { EmptyState, PageHeader, Panel, Toggle, fieldClass } from "./ui";
+import { Logo } from "@/components/ui/Logo";
 
 type Row = {
   id: string;
@@ -190,7 +191,7 @@ function Label({ row, showPrice }: { row: Row; showPrice: boolean }) {
   return (
     <div className="label bg-white text-black w-[50mm] h-[30mm] px-[2.5mm] py-[1.5mm] flex flex-col overflow-hidden break-inside-avoid">
       <div className="flex items-baseline justify-between gap-1 leading-none">
-        <span className="text-[7pt] font-bold tracking-[0.2em]">ASUR</span>
+        <Logo tone="dark" height={11} className="!h-[2.6mm] w-auto" />
         {showPrice && <span className="text-[7pt] font-semibold">{formatPrice(row.price)}</span>}
       </div>
       <p className="text-[6.5pt] leading-tight mt-[0.6mm] truncate">{row.productName.replace(/^ASUR\s+/i, "")}</p>
