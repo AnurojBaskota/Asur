@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowUpRight, Banknote, Clock, PackageCheck, ShoppingCart, Truck, Warehouse } from "lucide-react";
+import { AlertTriangle, ArrowRight, ArrowUpRight, Banknote, CheckCircle2, Clock, EyeOff, PackageCheck, Plus, Printer, ShoppingCart, Truck, Warehouse } from "lucide-react";
 import { db } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/session";
 import { formatPrice } from "@/lib/format";
@@ -16,7 +16,7 @@ export default async function AdminDashboard() {
   const days30 = new Date(now.getTime() - 30 * 86_400_000);
   const days60 = new Date(now.getTime() - 60 * 86_400_000);
 
-  const [today, last30, prev30, statusCounts, recent, variants, topItems] = await Promise.all([
+  const [today, last30, prev30, statusCounts, recent, variants, topItems, drafts] = await Promise.all([
     db.order.aggregate({ where: { createdAt: { gte: startOfToday }, status: COUNTED }, _sum: { total: true }, _count: true }),
     db.order.aggregate({ where: { createdAt: { gte: days30 }, status: COUNTED }, _sum: { total: true }, _count: true }),
     db.order.aggregate({ where: { createdAt: { gte: days60, lt: days30 }, status: COUNTED }, _sum: { total: true } }),
@@ -30,6 +30,7 @@ export default async function AdminDashboard() {
       orderBy: { _sum: { quantity: "desc" } },
       take: 5,
     }),
+    db.product.count({ where: { status: "draft" } }),
   ]);
 
   const count = (s: string) => statusCounts.find((c) => c.status === s)?._count ?? 0;
@@ -41,25 +42,90 @@ export default async function AdminDashboard() {
   const aov = last30._count ? Math.round(revenue30 / last30._count) : 0;
 
   const metrics = [
-    { label: "Revenue · 30 days", value: formatPrice(revenue30), sub: change === null ? "No previous period" : `${change >= 0 ? "+" : ""}${change}% vs previous 30 days`, icon: Banknote, tone: change !== null && change < 0 ? "text-status-error" : "text-status-success" },
-    { label: "Orders today", value: String(today._count), sub: `${formatPrice(today._sum.total ?? 0)} revenue`, icon: ShoppingCart, tone: "text-status-info" },
-    { label: "Awaiting confirmation", value: String(count("pending")), sub: "Call to confirm", icon: Clock, tone: "text-status-warning", href: "/admin/orders?status=pending" },
-    { label: "To pack", value: String(count("confirmed") + count("processing")), sub: `${count("ready_for_dispatch")} packed, awaiting pickup`, icon: PackageCheck, tone: "text-accent-primary", href: "/admin/dispatch" },
-    { label: "Out for delivery", value: String(count("dispatched")), sub: `${count("delivered")} delivered all-time`, icon: Truck, tone: "text-accent-primary", href: "/admin/orders?status=dispatched" },
-    { label: "Stock value", value: formatPrice(stockValue), sub: `${low.length} variants low or sold out`, icon: Warehouse, tone: low.length ? "text-status-warning" : "text-status-success", href: "/admin/inventory?filter=low" },
+    { label: "Sales · last 30 days", value: formatPrice(revenue30), sub: change === null ? `${last30._count} orders` : `${change >= 0 ? "▲" : "▼"} ${Math.abs(change)}% vs the 30 days before`, icon: Banknote, tone: change !== null && change < 0 ? "text-status-error" : "text-status-success" },
+    { label: "Orders today", value: String(today._count), sub: `${formatPrice(today._sum.total ?? 0)} in sales`, icon: ShoppingCart, tone: "text-status-info", href: "/admin/orders" },
+    { label: "Average order", value: formatPrice(aov), sub: "Last 30 days", icon: Banknote, tone: "text-accent-primary" },
+    { label: "Stock value", value: formatPrice(stockValue), sub: "What your stock cost you", icon: Warehouse, tone: "text-asur-silver", href: "/admin/inventory" },
   ];
+
+  const greeting = now.getHours() < 12 ? "Good morning" : now.getHours() < 18 ? "Good afternoon" : "Good evening";
+  const todos = [
+    count("pending") > 0 && {
+      icon: Clock, tone: "text-status-error bg-status-error/10",
+      text: `${count("pending")} new order${count("pending") === 1 ? "" : "s"} to confirm`,
+      hint: "Call the customer, then press Confirm.", href: "/admin/orders?status=pending", cta: "Review",
+    },
+    count("confirmed") + count("processing") > 0 && {
+      icon: PackageCheck, tone: "text-status-warning bg-status-warning/10",
+      text: `${count("confirmed") + count("processing")} order${count("confirmed") + count("processing") === 1 ? "" : "s"} to pack`,
+      hint: "Scan each item as you pack it.", href: "/admin/dispatch", cta: "Start packing",
+    },
+    count("ready_for_dispatch") > 0 && {
+      icon: Truck, tone: "text-accent-primary bg-accent-primary/10",
+      text: `${count("ready_for_dispatch")} parcel${count("ready_for_dispatch") === 1 ? "" : "s"} ready for the courier`,
+      hint: "Mark them dispatched once picked up.", href: "/admin/orders?status=ready_for_dispatch", cta: "Open",
+    },
+    low.length > 0 && {
+      icon: AlertTriangle, tone: "text-status-warning bg-status-warning/10",
+      text: `${low.length} size${low.length === 1 ? "" : "s"} running low or sold out`,
+      hint: "Restock so customers can keep buying.", href: "/admin/inventory?filter=low", cta: "Restock",
+    },
+    drafts > 0 && {
+      icon: EyeOff, tone: "text-asur-silver bg-asur-steel/40",
+      text: `${drafts} product${drafts === 1 ? "" : "s"} not yet on the store`,
+      hint: "Drafts are hidden from customers.", href: "/admin/products", cta: "View",
+    },
+  ].filter(Boolean) as { icon: typeof Clock; tone: string; text: string; hint: string; href: string; cta: string }[];
 
   return (
     <div>
-      <PageHeader title="Dashboard" subtitle={`${now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })} · Avg. order ${formatPrice(aov)}`} />
+      <PageHeader
+        title={greeting}
+        subtitle={now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+        actions={
+          <>
+            <Link href="/admin/products/new" className="inline-flex items-center gap-2 h-10 px-4 rounded-md bg-asur-bone text-asur-black text-[14px] font-semibold hover:bg-asur-white"><Plus size={16} /> Add product</Link>
+            <Link href="/admin/inventory/barcodes" className="inline-flex items-center gap-2 h-10 px-4 rounded-md border border-asur-iron text-[14px] text-asur-white hover:border-asur-silver"><Printer size={16} /> Print labels</Link>
+          </>
+        }
+      />
 
-      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
+      <Panel title="To do" className="mb-8">
+        {todos.length === 0 ? (
+          <p className="flex items-center gap-3 text-[15px] text-asur-ash"><CheckCircle2 size={20} className="text-status-success" /> You&apos;re all caught up. Nothing needs your attention right now.</p>
+        ) : (
+          <ul className="-my-2 divide-y divide-asur-graphite">
+            {todos.map((t) => {
+              const Icon = t.icon;
+              return (
+                <li key={t.text}>
+                  <Link href={t.href} className="group flex items-center gap-4 py-3">
+                    <span className={cn("h-10 w-10 shrink-0 rounded-full flex items-center justify-center", t.tone)}><Icon size={18} /></span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[15px] font-medium text-asur-white">{t.text}</span>
+                      <span className="block text-[13px] text-asur-slate">{t.hint}</span>
+                    </span>
+                    <span className="hidden sm:inline-flex items-center gap-1.5 h-9 px-4 rounded-md border border-asur-iron text-[13px] text-asur-white group-hover:border-asur-white">
+                      {t.cta} <ArrowRight size={14} />
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Panel>
+
+      <h2 className="text-[16px] font-semibold text-asur-white mb-3">How the shop is doing</h2>
+      
+
+      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         {metrics.map((m) => {
           const Icon = m.icon;
           const body = (
-            <div className={cn("h-full bg-asur-carbon border border-asur-graphite p-5 transition-colors", m.href && "hover:border-asur-iron")}>
+            <div className={cn("h-full bg-asur-carbon border border-asur-graphite rounded-lg p-5 transition-colors", m.href && "hover:border-asur-iron")}>
               <div className="flex items-center justify-between">
-                <p className="text-caption text-asur-slate uppercase tracking-wider">{m.label}</p>
+                <p className="text-[14px] text-asur-silver">{m.label}</p>
                 <Icon size={16} className={m.tone} />
               </div>
               <p className="mt-3 text-heading-lg font-bold text-asur-white">{m.value}</p>
@@ -95,7 +161,7 @@ export default async function AdminDashboard() {
         </Panel>
 
         <div className="space-y-6">
-          <Panel title="Best sellers · 30 days">
+          <Panel title="Best sellers (30 days)">
             {topItems.length === 0 ? (
               <p className="text-body-sm text-asur-slate">No sales yet.</p>
             ) : (

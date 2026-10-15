@@ -1,23 +1,23 @@
 import { cn } from "@/lib/utils";
 
 export const fieldClass =
-  "w-full bg-asur-graphite border border-asur-iron px-3 py-2.5 text-body-sm text-asur-white placeholder:text-asur-slate focus:outline-none focus:border-asur-silver transition-colors disabled:opacity-60";
+  "w-full h-11 bg-asur-graphite border border-asur-iron rounded-md px-3.5 text-[15px] text-asur-white placeholder:text-asur-slate focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/40 transition-colors disabled:opacity-60 [&:is(textarea)]:h-auto [&:is(textarea)]:py-2.5";
 
 export function Label({ htmlFor, children, hint }: { htmlFor?: string; children: React.ReactNode; hint?: string }) {
   return (
     <label htmlFor={htmlFor} className="flex items-baseline justify-between gap-2 mb-1.5">
-      <span className="text-caption text-asur-silver uppercase tracking-wider">{children}</span>
-      {hint && <span className="text-[11px] text-asur-slate normal-case">{hint}</span>}
+      <span className="text-[14px] font-medium text-asur-ash">{children}</span>
+      {hint && <span className="text-[12px] text-asur-slate">{hint}</span>}
     </label>
   );
 }
 
 export function Panel({ title, action, children, className }: { title?: React.ReactNode; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <section className={cn("bg-asur-carbon border border-asur-graphite", className)}>
+    <section className={cn("bg-asur-carbon border border-asur-graphite rounded-lg", className)}>
       {(title || action) && (
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-asur-graphite">
-          {title && <h2 className="text-body-md font-medium text-asur-white">{title}</h2>}
+          {title && <h2 className="text-[16px] font-semibold text-asur-white">{title}</h2>}
           {action}
         </div>
       )}
@@ -28,12 +28,12 @@ export function Panel({ title, action, children, className }: { title?: React.Re
 
 export function PageHeader({ title, subtitle, actions, back }: { title: string; subtitle?: React.ReactNode; actions?: React.ReactNode; back?: React.ReactNode }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
       <div className="flex items-start gap-3">
         {back}
         <div>
-          <h1 className="text-display-sm font-bold text-asur-white">{title}</h1>
-          {subtitle && <p className="text-body-sm text-asur-silver mt-1">{subtitle}</p>}
+          <h1 className="text-[28px] font-bold tracking-tight text-asur-white">{title}</h1>
+          {subtitle && <p className="text-[15px] text-asur-silver mt-1">{subtitle}</p>}
         </div>
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
