@@ -99,3 +99,24 @@ export async function getInventory() {
     orderBy: [{ product: { name: "asc" } }, { colorName: "asc" }, { createdAt: "asc" }],
   });
 }
+
+/** Product ids ranked by units sold in the last `days` days (cancelled/returned excluded). */
+export async function getBestSellerIds(limit = 8, days = 60): Promise<string[]> {
+  const since = new Date(Date.now() - days * 86_400_000);
+  const rows = await db.orderItem.groupBy({
+    by: ["variantId"],
+    where: { variantId: { not: null }, order: { createdAt: { gte: since }, status: { notIn: ["cancelled", "returned"] } } },
+    _sum: { quantity: true },
+  });
+  if (!rows.length) return [];
+  const variants = await db.variant.findMany({
+    where: { id: { in: rows.map((r) => r.variantId!) } },
+    select: { id: true, productId: true },
+  });
+  const byProduct = new Map<string, number>();
+  for (const r of rows) {
+    const pid = variants.find((v) => v.id === r.variantId)?.productId;
+    if (pid) byProduct.set(pid, (byProduct.get(pid) ?? 0) + (r._sum.quantity ?? 0));
+  }
+  return [...byProduct].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([id]) => id);
+}

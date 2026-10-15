@@ -5,7 +5,7 @@ import type { StoreSettings } from "@/lib/settings";
 
 export function Hero({ h }: { h: StoreSettings["hero"] }) {
   return (
-    <section className="relative h-[100svh] min-h-[640px] max-h-[1100px] overflow-hidden bg-asur-black grain">
+    <section className="relative h-[78svh] min-h-[560px] max-h-[860px] overflow-hidden bg-asur-black grain">
       <SmartImage
         src={h.image}
         alt=""
@@ -30,14 +30,14 @@ export function Hero({ h }: { h: StoreSettings["hero"] }) {
         </div>
 
         <div className="mt-auto">
-          <h1 className="font-display condensed font-black uppercase text-asur-white leading-[0.82] tracking-[-0.01em] text-[clamp(4.5rem,15vw,13.5rem)]">
+          <h1 className="font-display condensed font-black uppercase text-asur-white leading-[0.82] tracking-[-0.01em] text-[clamp(3.75rem,11vw,10rem)]">
             <span className="block animate-slide-up">{h.titleLine1}</span>
             <span className="block animate-slide-up [animation-delay:120ms] [animation-fill-mode:both]">
               {h.titleLine2}{h.titleLine2 && " "}<span className="text-transparent [-webkit-text-stroke:2px_var(--color-asur-white)]">{h.outlineWord}</span>
             </span>
           </h1>
 
-          <div className="mt-8 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+          <div className="mt-6 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
             <div className="max-w-md animate-fade-in [animation-delay:400ms] [animation-fill-mode:both]">
               <p className="text-[15px] sm:text-base leading-relaxed text-asur-ash">
                 {h.subtitle}
@@ -59,8 +59,8 @@ export function Hero({ h }: { h: StoreSettings["hero"] }) {
               </div>
             </div>
 
-            <a href="#featured" className="hidden lg:flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-asur-slate hover:text-asur-white transition-colors">
-              Scroll to explore
+            <a href="#shop" className="hidden lg:flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-asur-slate hover:text-asur-white transition-colors">
+              Shop below
               <span className="flex h-10 w-10 items-center justify-center rounded-full border border-asur-iron">
                 <ArrowDown size={14} className="animate-bounce" />
               </span>

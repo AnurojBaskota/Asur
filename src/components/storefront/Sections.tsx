@@ -95,12 +95,12 @@ export function TrustBar({ shipping }: { shipping: StoreSettings["shipping"] }) 
         {items.map(({ icon: Icon, title, text }, i) => (
           <div
             key={title}
-            className={`flex items-center gap-4 py-6 sm:py-8 ${i % 2 ? "pl-4 sm:pl-8" : "pr-4"} ${i > 0 ? "lg:pl-8 lg:border-l border-asur-graphite" : ""} ${i === 1 ? "border-l lg:border-l" : ""} ${i >= 2 ? "border-t lg:border-t-0" : ""}`}
+            className={`flex items-center gap-3 sm:gap-4 py-3 sm:py-5 ${i % 2 ? "pl-4 sm:pl-8" : "pr-4"} ${i > 0 ? "lg:pl-8 lg:border-l border-asur-graphite" : ""} ${i === 1 ? "border-l lg:border-l" : ""} ${i >= 2 ? "border-t lg:border-t-0" : ""}`}
           >
-            <Icon size={22} strokeWidth={1.5} className="shrink-0 text-accent-primary" />
+            <Icon size={20} strokeWidth={1.5} className="shrink-0 text-accent-primary" />
             <div>
-              <p className="text-[14px] font-medium text-asur-white">{title}</p>
-              <p className="text-[12px] text-asur-slate">{text}</p>
+              <p className="text-[13px] sm:text-[14px] font-medium text-asur-white">{title}</p>
+              <p className="hidden sm:block text-[12px] text-asur-slate">{text}</p>
             </div>
           </div>
         ))}
@@ -304,11 +304,11 @@ export function BrandStory({ c }: { c: StoreSettings["story"] }) {
 export function Newsletter({ c }: { c: StoreSettings["newsletter"] }) {
   if (!c.enabled) return null;
   return (
-    <section className="py-20 sm:py-32 bg-asur-bone text-asur-black">
+    <section className="py-14 sm:py-20 bg-asur-bone text-asur-black">
       <div className={`${container} grid lg:grid-cols-2 gap-10 items-end`}>
         <Reveal>
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-accent-secondary mb-4">{c.eyebrow}</p>
-          <h2 className="font-display condensed font-black uppercase leading-[0.85] text-[clamp(3.25rem,7vw,7rem)]">
+          <h2 className="font-display condensed font-black uppercase leading-[0.85] text-[clamp(2.75rem,5vw,4.5rem)]">
             {c.title}
           </h2>
         </Reveal>
@@ -336,6 +336,7 @@ export async function Footer() {
         { label: "Shop all", href: "/shop" },
         { label: "New in", href: "/shop?filter=new" },
         { label: "Sale", href: "/shop?filter=sale" },
+        { label: "Our story", href: "/about" },
       ],
     },
     { title: "Help", links: pages.map((p) => ({ label: p.title, href: `/pages/${p.slug}` })) },
@@ -385,5 +386,83 @@ export async function Footer() {
         {brand.name}
       </p>
     </footer>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Product-first homepage blocks                                       */
+/* ------------------------------------------------------------------ */
+
+export type RailTile = { label: string; href: string; image: string | null; sub?: string };
+
+/** Image tiles with captions that scroll sideways (Gymshark "Featured collections"). */
+export function CategoryRail({ tiles }: { tiles: RailTile[] }) {
+  if (!tiles.length) return null;
+  return (
+    <section className="pt-10 sm:pt-14">
+      <div className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-px-4 sm:scroll-px-6 lg:scroll-px-10 px-4 sm:px-6 lg:px-10 max-w-9xl mx-auto">
+        {tiles.map((t) => (
+          <Link key={t.href} href={t.href} className="group w-[40vw] sm:w-[26vw] lg:w-[calc((100%-4*1rem)/5)] shrink-0 snap-start">
+            <div className="relative aspect-[3/4] overflow-hidden bg-asur-graphite">
+              {t.image && (
+                <SmartImage src={t.image} alt="" fill sizes="(min-width: 1024px) 20vw, 40vw" className="object-cover transition-transform duration-700 group-hover:scale-105" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-asur-black/50 to-transparent" />
+            </div>
+            <p className="mt-3 text-[14px] font-semibold uppercase tracking-[0.08em] text-asur-white">{t.label}</p>
+            {t.sub && <p className="text-[12px] text-asur-slate">{t.sub}</p>}
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Big split banners per category with one call to action. */
+export function ShopBanners({ categories }: { categories: CategoryTile[] }) {
+  if (!categories.length) return null;
+  const cols = categories.length === 1 ? "" : categories.length === 2 ? "md:grid-cols-2" : "md:grid-cols-3";
+  return (
+    <section className={`${container} py-6`}>
+      <div className={`grid grid-cols-1 ${cols} gap-3 sm:gap-4`}>
+        {categories.map((cat) => (
+          <Link key={cat.slug} href={`/category/${cat.slug}`} className="group relative block aspect-[4/5] md:aspect-[5/6] overflow-hidden bg-asur-graphite">
+            {cat.image && (
+              <SmartImage src={cat.image} alt={cat.name} fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover transition-transform duration-[1200ms] group-hover:scale-105" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-asur-black/80 via-transparent to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8 flex flex-col items-center text-center">
+              <h3 className="font-display condensed font-black uppercase text-asur-white leading-none text-5xl sm:text-6xl">{cat.name}</h3>
+              <span className="mt-5 inline-flex items-center h-11 px-7 bg-asur-bone text-asur-black text-[12px] font-semibold uppercase tracking-[0.12em] transition-colors group-hover:bg-asur-white">
+                Shop now
+              </span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Compact full-width campaign banner: image, headline, one button. */
+export function CampaignStrip({ c }: { c: StoreSettings["campaign"] }) {
+  if (!c.enabled) return null;
+  return (
+    <section className={`${container} py-6`}>
+      <Link href={c.ctaHref} className="group relative flex min-h-[46svh] items-end overflow-hidden bg-asur-graphite grain">
+        <SmartImage src={c.image} alt="" fill sizes="100vw" className="object-cover transition-transform duration-[1500ms] group-hover:scale-[1.03]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-asur-black/85 via-asur-black/40 to-transparent" />
+        <div className="relative p-6 sm:p-12 max-w-2xl">
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-accent-primary mb-3">{c.eyebrow}</p>
+          <h2 className="font-display condensed font-black uppercase text-asur-white leading-[0.88] text-[clamp(2.75rem,6vw,5.5rem)]">
+            {c.title}{" "}
+            <span className="text-transparent [-webkit-text-stroke:2px_var(--color-accent-primary)]">{c.outlineWord}</span>
+          </h2>
+          <span className="mt-6 inline-flex items-center gap-2 h-12 px-6 bg-asur-bone text-asur-black text-[13px] font-semibold uppercase tracking-[0.12em] group-hover:bg-asur-white">
+            {c.ctaLabel} <ArrowRight size={15} />
+          </span>
+        </div>
+      </Link>
+    </section>
   );
 }

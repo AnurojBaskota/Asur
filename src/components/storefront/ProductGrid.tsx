@@ -25,19 +25,19 @@ export function ProductListing({
   return (
     <div>
       {/* Header */}
-      <header className={cn("relative overflow-hidden", image ? "min-h-[56svh] flex items-end grain" : "pt-[104px]")}>
+      <header className={cn("relative overflow-hidden", image ? "min-h-[34svh] flex items-end grain pt-[96px]" : "pt-[96px]")}>
         {image && (
           <>
             <SmartImage src={image} alt="" fill priority sizes="100vw" className="object-cover object-[50%_30%]" />
             <div className="absolute inset-0 bg-gradient-to-t from-asur-black via-asur-black/50 to-asur-black/20" />
           </>
         )}
-        <div className="relative w-full max-w-9xl mx-auto px-4 sm:px-6 lg:px-10 pt-16 pb-10 sm:pb-14">
+        <div className="relative w-full max-w-9xl mx-auto px-4 sm:px-6 lg:px-10 pt-8 pb-6 sm:pb-8">
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-accent-primary mb-3">{overline}</p>
-          <h1 className="font-display condensed font-black uppercase text-asur-white leading-[0.82] text-[clamp(3.5rem,11vw,10rem)]">
+          <h1 className="font-display condensed font-black uppercase text-asur-white leading-[0.82] text-[clamp(3rem,7vw,6rem)]">
             {title}
           </h1>
-          {description && <p className="mt-5 max-w-xl text-[15px] sm:text-base leading-relaxed text-asur-ash">{description}</p>}
+          {description && <p className="mt-3 max-w-xl text-[15px] sm:text-base leading-relaxed text-asur-ash">{description}</p>}
         </div>
       </header>
 
@@ -71,7 +71,7 @@ export function ProductListing({
       </div>
 
       {/* Grid */}
-      <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-10 pt-8 pb-24 sm:pb-32">
+      <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-10 pt-6 pb-20 sm:pb-24">
         {products.length === 0 ? (
           <div className="py-28 text-center">
             <p className="font-display condensed font-black uppercase text-5xl text-asur-white">Nothing here yet</p>
@@ -81,7 +81,7 @@ export function ProductListing({
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-12 sm:gap-x-5">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-8 sm:gap-x-4 sm:gap-y-10">
             {products.map((p, i) => (
               <Reveal key={p.id} delay={(i % 4) * 70}>
                 <ProductCard product={p} priority={i < 4} />

@@ -16,9 +16,10 @@ interface ProductCardProps {
   className?: string;
   index?: number;
   priority?: boolean;
+  bestSeller?: boolean;
 }
 
-export function ProductCard({ product, className, index, priority }: ProductCardProps) {
+export function ProductCard({ product, className, index, priority, bestSeller }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
   const openCart = useCartStore((s) => s.openCart);
 
@@ -85,7 +86,8 @@ export function ProductCard({ product, className, index, priority }: ProductCard
               <Tag className="bg-asur-black/80 text-asur-ash">Sold out</Tag>
             ) : (
               <>
-                {product.isNew && <Tag className="bg-asur-bone text-asur-black">New</Tag>}
+                {bestSeller && <Tag className="bg-accent-primary text-asur-black">Best seller</Tag>}
+                {product.isNew && !bestSeller && <Tag className="bg-asur-bone text-asur-black">New</Tag>}
                 {salePrice && <Tag className="bg-status-error text-white">−{Math.round((1 - salePrice / price) * 100)}%</Tag>}
               </>
             )}

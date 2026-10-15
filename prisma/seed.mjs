@@ -149,10 +149,71 @@ const products = [
     price: 1790,
     cost: 560,
   },
+  // ---- Extended sample range (demo data) ----
+  {
+    category: "oversized-tees", name: "ASUR Essential Tee", description: "The everyday staple. Mid-weight cotton with a relaxed — not boxy — fit that layers under anything.",
+    material: "100% cotton, 220GSM", careInstructions: "Machine wash cold.", fit: "Regular", weight: "240g", gender: "Unisex", collection: "Essentials", tags: "essential",
+    featured: false, isNew: false, images: ["1666358777322-a25eda95848f", "1779278547537-a58938a55741"],
+    colors: [["Black", "#0A0A0A"], ["White", "#FAFAFA"], ["Grey", "#6B6B6B"]], sizes: ["S", "M", "L", "XL", "XXL"], price: 1690, cost: 540,
+  },
+  {
+    category: "oversized-tees", name: "ASUR Street Oversized Tee", description: "Extra-long body and wide sleeves for that street-ready drape. Heavy enough to hold its shape all day.",
+    material: "100% cotton, 270GSM", careInstructions: "Wash inside out, cold.", fit: "Oversized", weight: "310g", gender: "Men", collection: "Street", tags: "heavyweight",
+    featured: true, isNew: true, images: ["1633756887168-44c79bddf8b3"],
+    colors: [["Black", "#0A0A0A"]], sizes: ["M", "L", "XL", "XXL"], price: 2590, cost: 930,
+  },
+  {
+    category: "oversized-tees", name: "ASUR Piped Tee", description: "Contrast piping along the shoulders and sleeves. A clean athletic detail on a heavyweight base.",
+    material: "100% cotton, 250GSM", careInstructions: "Machine wash cold.", fit: "Regular", weight: "280g", gender: "Men", collection: "Training", tags: "",
+    featured: false, isNew: true, images: ["1622519407650-3df9883f76a5"],
+    colors: [["Charcoal", "#2A2A2A"]], sizes: ["S", "M", "L", "XL"], price: 2190, salePrice: 1790, cost: 760,
+  },
+  {
+    category: "oversized-tees", name: "ASUR Studio V-Neck Tee", description: "A sharp V-neck cut slim through the chest. Built for days that start in the gym and end anywhere.",
+    material: "95% cotton, 5% elastane", careInstructions: "Machine wash cold. Hang dry.", fit: "Slim", weight: "200g", gender: "Men", collection: "Essentials", tags: "",
+    featured: false, isNew: false, images: ["1770616756438-94687fb03d26"],
+    colors: [["Black", "#0A0A0A"]], sizes: ["S", "M", "L", "XL"], price: 1890, cost: 600,
+  },
+  {
+    category: "oversized-tees", name: "ASUR Everyday Oversized Tee", description: "Soft-hand oversized tee for rest days and travel. Dropped shoulder, slightly cropped.",
+    material: "100% cotton, 240GSM", careInstructions: "Machine wash cold.", fit: "Oversized", weight: "270g", gender: "Unisex", collection: "Essentials", tags: "",
+    featured: false, isNew: false, images: ["1726140872193-231b808dc4cb"],
+    colors: [["Black", "#0A0A0A"], ["Sand", "#C8B79A"]], sizes: ["S", "M", "L", "XL"], price: 2290, salePrice: 1890, cost: 820,
+  },
+  {
+    category: "oversized-tees", name: "ASUR Monochrome Tee", description: "Tone-on-tone chest branding on our heaviest jersey. Understated, built to last.",
+    material: "100% cotton, 280GSM", careInstructions: "Wash inside out, cold.", fit: "Oversized", weight: "320g", gender: "Men", collection: "Foundation", tags: "bestseller",
+    featured: true, isNew: false, images: ["1759346617233-9c57f44535fd", "1782171059880-1f6d8eb0cf52"],
+    colors: [["Black", "#0A0A0A"]], sizes: ["S", "M", "L", "XL", "XXL"], price: 2490, cost: 890,
+  },
+  {
+    category: "sleeveless", name: "ASUR Ribbed Muscle Tank", description: "Fitted rib-knit tank that moves with you. Wide armholes, close fit through the body.",
+    material: "95% cotton, 5% elastane, rib knit", careInstructions: "Machine wash cold. Hang dry.", fit: "Slim", weight: "150g", gender: "Men", collection: "Training", tags: "bestseller",
+    featured: true, isNew: true, images: ["1627063383848-990b09ca1617", "1744551472645-7fd56c0406ff"],
+    colors: [["Black", "#0A0A0A"]], sizes: ["S", "M", "L", "XL"], price: 1690, cost: 520,
+  },
+  {
+    category: "sleeveless", name: "ASUR Essential Tank", description: "A clean, classic tank in breathable cotton. The base layer for every session.",
+    material: "100% cotton, 180GSM", careInstructions: "Machine wash cold.", fit: "Regular", weight: "140g", gender: "Unisex", collection: "Essentials", tags: "essential",
+    featured: false, isNew: false, images: ["1767392060739-8ae29223816c", "1767392060233-8a45559f8bd8"],
+    colors: [["White", "#FAFAFA"], ["Black", "#0A0A0A"]], sizes: ["S", "M", "L", "XL", "XXL"], price: 1490, cost: 450,
+  },
+  {
+    category: "sleeveless", name: "ASUR Heavyweight Tank", description: "Our 240GSM jersey cut as a tank. Structured, opaque and made to take a beating.",
+    material: "100% cotton, 240GSM", careInstructions: "Wash inside out, cold.", fit: "Regular", weight: "190g", gender: "Men", collection: "Foundation", tags: "heavyweight",
+    featured: false, isNew: true, images: ["1762108669600-d86eb3342c6d"],
+    colors: [["Black", "#0A0A0A"]], sizes: ["M", "L", "XL"], price: 1990, cost: 640,
+  },
+  {
+    category: "sleeveless", name: "ASUR Studio Tank", description: "A soft, slightly longer tank for warm-ups and warm days. Easy fit, clean finish.",
+    material: "60% cotton, 40% modal", careInstructions: "Machine wash cold. Hang dry.", fit: "Regular", weight: "130g", gender: "Men", collection: "Essentials", tags: "",
+    featured: false, isNew: false, images: ["1790384680788-b0598cdb5d97"],
+    colors: [["White", "#FAFAFA"]], sizes: ["S", "M", "L", "XL"], price: 1590, salePrice: 1290, cost: 480,
+  },
 ];
 
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-const colorCode = { Black: "BLK", Bone: "BNE", Graphite: "GPH", Grey: "GRY", "Washed Black": "WBK" };
+const colorCode = { Black: "BLK", Bone: "BNE", Graphite: "GPH", Grey: "GRY", "Washed Black": "WBK", White: "WHT", Charcoal: "CHR", Sand: "SND" };
 const prodCode = (name) =>
   name.replace(/^ASUR\s+/i, "").replace(/[^A-Za-z ]/g, " ").split(/\s+/).filter(Boolean).map((w) => w[0].toUpperCase()).join("").slice(0, 4);
 
@@ -167,7 +228,12 @@ async function main() {
   for (const c of categories) catIds[c.slug] = (await db.category.create({ data: c })).id;
 
   let seq = 1;
+  const usedCodes = new Set();
   for (const p of products) {
+    // Product code from initials, made unique ("Essential Tee" vs "Essential Tank").
+    let code = prodCode(p.name);
+    for (let n = 2; usedCodes.has(code); n++) code = `${prodCode(p.name)}${n}`;
+    usedCodes.add(code);
     const { images, colors, sizes, price, salePrice, cost, category, ...rest } = p;
     const product = await db.product.create({
       data: {
@@ -188,7 +254,7 @@ async function main() {
         const v = await db.variant.create({
           data: {
             productId: product.id,
-            sku: `ASUR-${prodCode(p.name)}-${colorCode[colorName]}-${size}`,
+            sku: `ASUR-${code}-${colorCode[colorName] ?? colorName.slice(0, 3).toUpperCase()}-${size}`,
             barcode: ean13(seq++),
             size,
             colorName,
